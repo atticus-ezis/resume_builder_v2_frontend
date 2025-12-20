@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// sample response data:
+// {
+//   "user": {
+//       "pk": 6,
+//       "username": "dumdum",
+//       "email": "dum@gmail.com",
+//       "first_name": "",
+//       "last_name": ""
+//   }
+// }
+// sets cookies as "refresh_token", "access_token"
 
 type FormData = {
   username: string;
@@ -72,11 +83,19 @@ export default function Registration() {
       >
         <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" />
         <FieldError error={error?.username} />
-        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" />
+        <input
+          type="email"
+          autoComplete="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Email"
+        />
         <FieldError error={error?.email} />
         <input
           type="password"
           name="password1"
+          autoComplete="new-password"
           value={formData.password1}
           onChange={handleChange}
           placeholder="Password"
@@ -85,6 +104,7 @@ export default function Registration() {
         <input
           type="password"
           name="password2"
+          autoComplete="new-password"
           value={formData.password2}
           onChange={handleChange}
           placeholder="Confirm Password"
