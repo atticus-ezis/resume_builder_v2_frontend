@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/app/api";
 // sample response data:
 // {
 //   "user": {
@@ -30,34 +31,23 @@ export default function Registration() {
     password2: "",
   });
 
-  const register_endpoint = process.env.NEXT_PUBLIC_API_BASE_URL + "api/accounts/registration/";
+  const register_endpoint = "/api/accounts/registration/";
 
   async function registerUser() {
     setError(null);
     setResponse(null);
-    console.log("endpoint used:", register_endpoint);
+    console.log("Registration attempted:", register_endpoint);
 
     try {
-      const response = await fetch(register_endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await api.post(register_endpoint, formData);
 
-      if (!response.ok) {
-        const errorData = await response.json(); // { "username": [ "This field is required." ] }
-        console.log("This is the error:", errorData);
-        setError(errorData);
-      } else {
-        const data = await response.json();
-        console.log("!!!! Success:This is the data:", data);
-        setResponse(data);
-      }
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError({ detail: "Network error or invalid response" });
+      console.log("Success! Response:", response);
+
+      setResponse(response.data);
+    } catch (err: any) {
+      console.error("Registration error:", err.message, "Code:", err.code, "Raw Error:", err);
+      console.error("data being sent:", err.config.data);
+      setError({ detail: err.message });
     }
   }
 
