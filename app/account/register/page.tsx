@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "@/app/api";
 // sample response data:
 // {
@@ -44,15 +44,29 @@ export default function Registration() {
       setResponse(response.data);
     } catch (err: any) {
       console.error("Registration error:", err.message, "Code:", err.code, "Raw Error:", err);
-      console.error("data being sent:", err.config.data);
-      console.error("response:", err.response.data.detail);
-      setError({ detail: [err.message, err.response.data.detail] });
+      console.error("data being sent:", err.config?.data);
+      console.error("response:", err.response?.data);
+
+      // Handle different error scenarios:
+      // 1. API returned error response with field-specific errors
+      // 2. Network error (no response)
+      // 3. Other errors
+      if (err.response?.data) {
+        setError(err.response.data);
+      } else if (err.message) {
+        setError({ detail: err.message });
+      } else {
+        setError({ detail: "An unexpected error occurred" });
+      }
     }
   }
 
-  const FieldError = ({ error }: { error?: Array<any> }) => {
-    if (!error?.length) return null;
-    return <div style={{ color: "red" }}>{error.map((error: any) => error).join(", ")}</div>;
+  const FieldError = ({ error }: { error?: Array<any> | string }) => {
+    if (!error) return null;
+    // Handle both array and string formats
+    const errorArray = Array.isArray(error) ? error : [error];
+    if (errorArray.length === 0) return null;
+    return <div style={{ color: "red" }}>{errorArray.join(", ")}</div>;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +116,9 @@ export default function Registration() {
         <button type="submit">Register</button>
       </form>
       {error && error.detail && (
-        <div style={{ color: "red" }}>Error: {error.detail.map((error: any) => error).join(", ")}</div>
+        <div style={{ color: "red" }}>
+          Error: {Array.isArray(error.detail) ? error.detail.join(", ") : error.detail}
+        </div>
       )}
       {response && (
         <div>
