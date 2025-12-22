@@ -2,17 +2,33 @@ import axios from "axios";
 
 const refresh_endpoint = process.env.NEXT_PUBLIC_API_BASE_URL + "api/accounts/token/refresh/";
 
+// Helper function to get cookie value by name
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null; // SSR safety
+
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(";").shift() || null;
+  }
+  return null;
+}
+
 export const api = axios.create({
   // debugger
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 api.interceptors.request.use(
   (config) => {
-    config.withCredentials = true;
+    const csrftoken = getCookie("csrftoken");
+    if (csrftoken) {
+      config.headers["X-CSRFToken"] = csrftoken;
+    }
     return config;
   },
   (error) => {
@@ -24,19 +40,17 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    console.log("originalRequest:", originalRequest);
+    console.log("AXIOS RESPONSE ERROR:", originalRequest);
     const isRefreshEndpoint = originalRequest.url?.includes("/token/refresh/");
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
-      console.log("Error found with Axios... Attempting refresh");
-      console.log("originalRequest._retry set to true");
-      console.log("New originalRequest._retry:", originalRequest._retry);
+      console.log("AXIOS ATTEMPTING REFRESH");
       try {
         await api.post(refresh_endpoint); // creates new originalRequest, ._retry is now false
-        console.log("Refresh Hit");
+        console.log("AXIOS REFRESH HIT");
         return api.post(originalRequest); // original originalRequest, ._retry is now true
       } catch (error) {
-        console.error("Refresh token error:", error);
+        console.error("AXIOS REFRESH ERROR:", error);
         window.location.href = "/login";
         return Promise.reject(error);
       }

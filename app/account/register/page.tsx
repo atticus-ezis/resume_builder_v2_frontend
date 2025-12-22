@@ -41,13 +41,12 @@ export default function Registration() {
     try {
       const response = await api.post(register_endpoint, formData);
 
-      console.log("Success! Response:", response);
-
       setResponse(response.data);
     } catch (err: any) {
       console.error("Registration error:", err.message, "Code:", err.code, "Raw Error:", err);
       console.error("data being sent:", err.config.data);
-      setError({ detail: err.message });
+      console.error("response:", err.response.data.detail);
+      setError({ detail: [err.message, err.response.data.detail] });
     }
   }
 
@@ -102,7 +101,9 @@ export default function Registration() {
         <FieldError error={error?.password2} />
         <button type="submit">Register</button>
       </form>
-      {error && error.detail && <div style={{ color: "red" }}>Error: {error.detail}</div>}
+      {error && error.detail && (
+        <div style={{ color: "red" }}>Error: {error.detail.map((error: any) => error).join(", ")}</div>
+      )}
       {response && (
         <div>
           <h1>Response Data</h1>
