@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/app/api";
+import { useRouter } from "next/navigation";
 // sample response data:
 // {
 //   "user": {
@@ -30,6 +31,7 @@ export default function Registration() {
     password1: "",
     password2: "",
   });
+  const router = useRouter();
 
   const register_endpoint = "/api/accounts/registration/";
 
@@ -42,6 +44,9 @@ export default function Registration() {
       const response = await api.post(register_endpoint, formData);
 
       setResponse(response.data);
+
+      console.log("Redirecting to profile page...");
+      router.push(`/account/profile/${response.data.user.pk}`);
     } catch (err: any) {
       console.error("Registration error:", err.message, "Code:", err.code, "Raw Error:", err);
       console.error("data being sent:", err.config?.data);
@@ -118,12 +123,6 @@ export default function Registration() {
       {error && error.detail && (
         <div style={{ color: "red" }}>
           Error: {Array.isArray(error.detail) ? error.detail.join(", ") : error.detail}
-        </div>
-      )}
-      {response && (
-        <div>
-          <h1>Response Data</h1>
-          <p>{JSON.stringify(response)}</p>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api } from "@/app/api";
+import { useRouter } from "next/navigation";
 
 type LoginForm = {
   username: string;
@@ -16,6 +17,7 @@ export default function Login() {
   });
   const [error, setError] = useState<any>(null);
   const [response, setResponse] = useState<any>(null);
+  const router = useRouter();
 
   const login_endpoint = "/api/accounts/login/";
 
@@ -32,14 +34,11 @@ export default function Login() {
       const response = await api.post(login_endpoint, loginForm);
       console.log("success!", response);
       setResponse(response.data);
+
+      router.push(`/account/profile/${response.data.user.id}`);
     } catch (err: any) {
       console.error("Login error:", err.message, "Code:", err.code, "Raw Error:", err);
       console.error("response:", err.response?.data);
-
-      // Handle different error scenarios:
-      // 1. API returned error response with field-specific errors
-      // 2. Network error (no response)
-      // 3. Other errors
       if (err.response?.data) {
         setError(err.response.data);
       } else if (err.message) {
