@@ -24,34 +24,36 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(
-  (config) => {
+  function (config) {
     const csrftoken = getCookie("csrftoken");
     if (csrftoken) {
       config.headers["X-CSRFToken"] = csrftoken;
     }
     return config;
   },
-  (error) => {
+  function (error) {
     return Promise.reject(error);
   }
 );
 
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  function onFullfilled(response) {
+    return response;
+  },
+  async function onRejected(error) {
     const originalRequest = error.config;
     console.log("AXIOS RESPONSE ERROR:", originalRequest);
     const isRefreshEndpoint = originalRequest.url?.includes("/token/refresh/");
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
-      console.log("AXIOS ATTEMPTING REFRESH");
+      console.log("Authorization Error: AXIOS ATTEMPTING REFRESH");
       try {
         await api.post(refresh_endpoint); // creates new originalRequest, ._retry is now false
         console.log("AXIOS REFRESH HIT");
         return api.post(originalRequest); // original originalRequest, ._retry is now true
       } catch (error) {
         console.error("AXIOS REFRESH ERROR:", error);
-        window.location.href = "/login";
+        document.location.href = "/account/login";
         return Promise.reject(error);
       }
     }
