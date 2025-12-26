@@ -44,19 +44,28 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     console.log("AXIOS RESPONSE ERROR:", originalRequest);
     const isRefreshEndpoint = originalRequest.url?.includes("/token/refresh/");
+
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
       console.log("Authorization Error: AXIOS ATTEMPTING REFRESH");
       try {
-        await api.post(refresh_endpoint); // creates new originalRequest, ._retry is now false
+        await fetch(refresh_endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken") || "",
+          },
+          credentials: "include",
+        });
         console.log("AXIOS REFRESH HIT");
-        return api.post(originalRequest); // original originalRequest, ._retry is now true
-      } catch (error) {
-        console.error("AXIOS REFRESH ERROR:", error);
+        return api(originalRequest); // ._retry is now true
+      } catch (err) {
+        console.error("AXIOS REFRESH ERROR:", err);
         document.location.href = "/account/login";
         return Promise.reject(error);
       }
     }
+
     console.log("Ending refresh check, returning original error");
     return Promise.reject(error);
   }
