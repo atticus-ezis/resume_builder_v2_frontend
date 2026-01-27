@@ -2,19 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import { Card, TextInput, Button, Alert, Label, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "flowbite-react";
-// sample response data:
-// {
-//   "user": {
-//       "pk": 6,
-//       "username": "dumdum",
-//       "email": "dum@gmail.com",
-//       "first_name": "",
-//       "last_name": ""
-//   }
-// }
-// sets cookies as "refresh_token", "access_token"
+import {
+  Card,
+  TextInput,
+  Button,
+  Alert,
+  Label,
+  Spinner,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "flowbite-react";
 
 type FormData = {
   email: string;
@@ -33,13 +32,11 @@ export default function Registration() {
   const [isLoading, setIsLoading] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const router = useRouter();
-  const { authorizeUser } = useAuth();
 
   const register_endpoint = process.env.NEXT_PUBLIC_API_BASE_URL + "api/accounts/registration/";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear field error when user starts typing
     if (fieldErrors[e.target.name]) {
       setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
     }
@@ -63,7 +60,6 @@ export default function Registration() {
 
       if (!response.ok) {
         if (response.status === 400) {
-          // Handle field-specific errors
           const newFieldErrors: Record<string, string> = {};
           Object.keys(responseJson).forEach((key) => {
             if (key !== "non_field_errors" && key !== "detail") {
@@ -96,9 +92,6 @@ export default function Registration() {
         return;
       }
 
-      // Handle successful registration
-      await authorizeUser();
-
       // Check if email verification is required
       if (responseJson.detail === "Verification e-mail sent.") {
         setShowVerificationModal(true);
@@ -106,13 +99,13 @@ export default function Registration() {
       }
 
       // Only redirect if user is fully registered (no email verification required)
-      if (responseJson.user?.pk) {
-        router.push(`/account/profile/${responseJson.user.pk}`);
-      } else {
-        setError("Registration successful but user data is missing.");
-        console.log("responseJson:", responseJson);
-        return;
-      }
+      // if (responseJson.user?.pk) {
+      //   router.push(`/account/profile/${responseJson.user.pk}`);
+      // } else {
+      //   setError("Registration successful but user data is missing.");
+      //   console.log("responseJson:", responseJson);
+      //   return;
+      // }
     } catch (err: any) {
       setError("Network error: Check your internet connection and try again.");
     } finally {
@@ -206,6 +199,7 @@ export default function Registration() {
       </Card>
 
       {/* Email Verification Modal */}
+      {/* Remove login button and redirect to login page after verification */}
       <Modal show={showVerificationModal} onClose={() => setShowVerificationModal(false)} size="md">
         <ModalHeader>Verify your email</ModalHeader>
         <ModalBody>
@@ -214,7 +208,8 @@ export default function Registration() {
               A confirmation link has been sent to <strong>{formData.email}</strong>
             </p>
             <p className="text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-              Please check your email and click the verification link to activate your account. You must verify your email before you can access your profile.
+              Please check your email and click the verification link to activate your account. You must verify your
+              email before you can access your profile.
             </p>
           </div>
         </ModalBody>
