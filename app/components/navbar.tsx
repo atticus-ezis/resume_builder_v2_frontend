@@ -11,10 +11,8 @@ export default function Navbar() {
   console.log("isVerified:", isVerified);
 
   async function logoutHandler() {
-    console.log("Hitting loggout endpoint");
     try {
       const response = await api.post("/api/accounts/logout/");
-      console.log("raw logout response:");
       router.push("/");
     } catch (error) {
       console.error("Error logging out:", error);
