@@ -57,7 +57,7 @@ export default function Login() {
 
       // Handle successful login
       if (responseJson.user?.pk) {
-        router.push(`/account/profile/${responseJson.user.pk}`);
+        router.push(`/account/profile/`);
       } else {
         setError("Login successful but user data is missing.");
         console.log("responseJson:", responseJson);
