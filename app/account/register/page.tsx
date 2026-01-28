@@ -213,17 +213,6 @@ export default function Registration() {
             </p>
           </div>
         </ModalBody>
-        <ModalFooter>
-          <Button
-            onClick={() => {
-              setShowVerificationModal(false);
-              router.push("/account/login");
-            }}
-            className="w-full"
-          >
-            Go to login
-          </Button>
-        </ModalFooter>
       </Modal>
     </div>
   );

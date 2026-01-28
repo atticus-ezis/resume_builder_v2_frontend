@@ -7,6 +7,8 @@ const validate_user_endpoint = process.env.NEXT_PUBLIC_API_BASE_URL + "api/accou
 
 type AuthContextType = {
   isVerified: boolean | null;
+  userEmail: string | null;
+  userId: string | null;
   authorizeUser: () => Promise<void>;
 };
 
@@ -14,16 +16,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const pathname = usePathname();
 
   const fetchUser = async () => {
     try {
       const response = await api.get(validate_user_endpoint);
-      console.log("Auth Context response:", response);
       setIsVerified(true);
+      // Safely access response data
+      if (response.data) {
+        setUserEmail(response.data.email || null);
+        setUserId(response.data.id || null);
+      }
     } catch (err: any) {
       console.log("Auth Context error:", err);
       setIsVerified(false);
+      setUserEmail(null);
+      setUserId(null);
     }
   };
 
@@ -39,7 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  return <AuthContext.Provider value={{ isVerified, authorizeUser: fetchUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isVerified, userEmail, userId, authorizeUser: fetchUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
