@@ -3,6 +3,7 @@ import { Card, Button } from "flowbite-react";
 import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import JobSelectionModal from "@/app/components/JobSelectionModal";
+import CreateJobFormModal from "@/app/components/CreateJobFormModal";
 
 // The backend returns a paginated list of existing jobs like ...
 // {
@@ -24,7 +25,7 @@ import JobSelectionModal from "@/app/components/JobSelectionModal";
 
 // If the user selects add new job post a form to this endpoint: api/job/
 // {
-//   "job_context": "{\"job_position": "string", "company_name": "string", "company_overview": "string", "job_description": "string", "job_requirements": "string" }"
+//   "job_context": jobContext
 // }
 
 type NewJob = {
@@ -44,16 +45,14 @@ export default function Home() {
     job_requirements: "",
   });
   const [showExistingJobsModal, setShowExistingJobsModal] = useState(false);
+  const [showNewJobModal, setShowNewJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState<{ id: number; job_position: string; company_name: string } | null>(
     null,
   );
   const [hasExistingJobs, setHasExistingJobs] = useState(false);
 
-  const addNewJob = () => {};
-
   const handleJobSelect = (job: { id: number; job_position: string; company_name: string }) => {
     setSelectedJob(job);
-    console.log("Selected job:", job);
   };
 
   // Check if there are existing jobs on mount
@@ -77,22 +76,16 @@ export default function Home() {
       <Card>
         <div></div>
         <span>Step 1: Add job details</span>
-        <Button onClick={addNewJob}>Add New Job</Button>
+        <Button onClick={() => setShowNewJobModal(true)}>Add New Job</Button>
+        <CreateJobFormModal
+          show={showNewJobModal}
+          onClose={() => setShowNewJobModal(false)}
+          onJobSelect={handleJobSelect}
+        />
         {hasExistingJobs && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-gray-600 dark:text-gray-400">or</span>
             <Button onClick={() => setShowExistingJobsModal(true)}>Choose from an existing job</Button>
-            {selectedJob && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                  Selected: <span className="font-semibold">{selectedJob.job_position}</span> at{" "}
-                  <span className="font-semibold">{selectedJob.company_name}</span>
-                </span>
-                <Button size="xs" color="gray" onClick={() => setSelectedJob(null)} className="ml-2">
-                  Clear
-                </Button>
-              </div>
-            )}
           </div>
         )}
         ;
@@ -101,6 +94,18 @@ export default function Home() {
           onClose={() => setShowExistingJobsModal(false)}
           onJobSelect={handleJobSelect}
         />
+        {selectedJob && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+              Selected: <span className="font-semibold">{selectedJob.job_position}</span> at{" "}
+              <span className="font-semibold">{selectedJob.company_name}</span>
+            </span>
+            <Button size="xs" color="gray" onClick={() => setSelectedJob(null)} className="ml-2">
+              Clear
+            </Button>
+          </div>
+        )}
+        ;
       </Card>
     </>
   );
