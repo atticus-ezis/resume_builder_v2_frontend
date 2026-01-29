@@ -1,4 +1,4 @@
-import { Modal, ModalHeader, ModalBody, Textarea, TextInput, Button, Label } from "flowbite-react";
+import { Modal, ModalHeader, ModalBody, ModalFooter, Textarea, TextInput, Button, Label } from "flowbite-react";
 import { useState } from "react";
 import { api } from "@/app/api";
 
@@ -70,14 +70,14 @@ export default function CreateJobFormModal({ show, onClose, onJobSelect }: Creat
   };
   return (
     <Modal show={show} onClose={onClose}>
-      <ModalHeader>EnterJob Details</ModalHeader>
+      <ModalHeader>Enter Job Details</ModalHeader>
       <ModalBody>
         {error && (
           <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
-        <form onSubmit={handleSubmit}>
+        <form id="create-job-form" onSubmit={handleSubmit}>
           <Label htmlFor="job_position">Job Position</Label>
           <TextInput
             name="job_position"
@@ -138,9 +138,16 @@ export default function CreateJobFormModal({ show, onClose, onJobSelect }: Creat
               <p className="text-sm text-red-800 dark:text-red-200">{fieldErrors.job_requirements}</p>
             </div>
           )}
-          <Button type="submit">Submit</Button>
         </form>
       </ModalBody>
+      <ModalFooter>
+        <Button type="button" onClick={onClose} color="gray">
+          Close
+        </Button>
+        <Button type="submit" form="create-job-form" disabled={isLoading}>
+          {isLoading ? "Submitting..." : "Submit"}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

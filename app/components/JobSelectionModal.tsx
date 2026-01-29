@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from "flowbite-react";
 import { api } from "@/app/api";
+import { formatDate } from "@/app/lib/formatDate";
 
 type Job = {
   id: number;
@@ -69,15 +70,6 @@ export default function JobSelectionModal({ show, onClose, onJobSelect }: JobSel
       setIsLoading(false);
     }
   }, []);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
 
   const handleJobSelect = (job: Job) => {
     onJobSelect({
