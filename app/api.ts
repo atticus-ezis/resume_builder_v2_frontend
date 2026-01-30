@@ -29,11 +29,15 @@ api.interceptors.request.use(
     if (csrftoken) {
       config.headers["X-CSRFToken"] = csrftoken;
     }
+    // Let the browser set Content-Type (with boundary) for FormData
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     return config;
   },
   function (error) {
     return Promise.reject(error);
-  }
+  },
 );
 
 api.interceptors.response.use(
@@ -68,5 +72,5 @@ api.interceptors.response.use(
 
     console.log("Ending refresh check, returning original error");
     return Promise.reject(error);
-  }
+  },
 );
