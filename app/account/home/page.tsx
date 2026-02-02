@@ -1,10 +1,11 @@
 "use client";
-import { Card, Button, FileInput } from "flowbite-react";
+import { Card, Button } from "flowbite-react";
 import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import JobSelectionModal from "@/app/components/JobSelectionModal";
 import CreateJobFormModal from "@/app/components/CreateJobFormModal";
 import AddResume from "@/app/components/AddResume";
+import GenerateDocuments from "@/app/components/GenerateDocuments";
 
 // The backend returns a paginated list of existing jobs like ...
 // {
@@ -37,6 +38,13 @@ type NewJob = {
   job_requirements: string;
 };
 
+const EMPTY_RESUME: { id: number; name: string; updated_at: string } = { id: 0, name: "", updated_at: "" };
+const EMPTY_JOB: { id: number; job_position: string; company_name: string } = {
+  id: 0,
+  job_position: "",
+  company_name: "",
+};
+
 export default function Home() {
   const [newJob, setNewJob] = useState<NewJob>({
     job_position: "",
@@ -48,7 +56,7 @@ export default function Home() {
   const [showExistingJobsModal, setShowExistingJobsModal] = useState(false);
   const [showNewJobModal, setShowNewJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState<{ id: number; job_position: string; company_name: string } | null>(
-    null,
+    null
   );
   const [hasExistingJobs, setHasExistingJobs] = useState(false);
   const [selectedResume, setSelectedResume] = useState<{ id: number; name: string; updated_at: string } | null>(null);
@@ -135,6 +143,16 @@ export default function Home() {
             </div>
 
             <div />
+          </div>
+        </Card>
+        {/* Generate Documents */}
+        <Card>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Step 3: Generate documents</h2>
+            </div>
+            {/* if both are present, call and display the api response*/}
+            <GenerateDocuments selectedResume={selectedResume || EMPTY_RESUME} selectedJob={selectedJob || EMPTY_JOB} />
           </div>
         </Card>
       </div>
