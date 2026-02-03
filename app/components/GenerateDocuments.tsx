@@ -23,8 +23,9 @@ type SelectedJob = {
   company_name: string;
 };
 
-type UpdateFormData = {
+type UpdatedFormData = {
   document_version_id: number;
+  version_name?: string;
   markdown?: string;
   instructions?: string;
 };
@@ -41,13 +42,20 @@ type DocumentResult = {
   document_version: { id: number; version: number };
 };
 
-function buildUpdatePayload(form: HTMLFormElement, doc: DocumentResult): UpdateFormData {
+type VersionSelect = {
+  versionId: number;
+  versionName: string;
+};
+
+function buildUpdatePayload(form: HTMLFormElement, doc: DocumentResult): UpdatedFormData {
   const formData = new FormData(form);
   const markdown = (formData.get("markdown") as string) ?? "";
   const instructions = (formData.get("instructions") as string)?.trim() || undefined;
+  const versionName = (formData.get("version_name") as string)?.trim() || undefined;
   const markdownChanged = markdown !== doc.markdown;
   return {
     document_version_id: doc.document_version.id,
+    ...(versionName && { version_name: versionName }),
     ...(markdownChanged && { markdown }),
     ...(instructions !== undefined && instructions !== "" && { instructions }),
   };
@@ -58,7 +66,11 @@ type DocumentEditFormProps = {
   index: number;
   title: string;
   content: string;
-  onContentChange: (type: string, value: string) => void;
+  versionName: string;
+  versions: VersionSelect[];
+  onVersionChange: (versionId: number) => void;
+  onContentChange: (value: string) => void;
+  onVersionNameChange: (index: number, value: string) => void;
   instructionsValue: string;
   showInstructions: boolean;
   onToggleInstructions: (index: number) => void;
@@ -72,7 +84,11 @@ function DocumentEditForm({
   index,
   title,
   content,
+  versionName,
+  versions,
+  onVersionChange,
   onContentChange,
+  onVersionNameChange,
   instructionsValue,
   showInstructions,
   onToggleInstructions,
@@ -80,19 +96,51 @@ function DocumentEditForm({
   onSubmit,
   isSubmitDisabled,
 }: DocumentEditFormProps) {
-  const documentType = doc.document.type;
   return (
     <div className={index > 0 ? "mt-8 border-t border-gray-200 pt-6" : ""}>
-      <h3 className="mb-3 text-lg font-semibold text-gray-900">{title}</h3>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        {versions.length > 1 && (
+          <>
+            <label htmlFor={`version-select-${index}`} className="text-sm font-medium text-gray-700">
+              Drafts:
+            </label>
+            <Select
+              id={`version-select-${index}`}
+              value={doc.document_version.id}
+              onChange={(e) => onVersionChange(Number(e.target.value))}
+            >
+              {versions.map((v) => (
+                <option key={v.versionId} value={v.versionId}>
+                  {v.versionName || `Draft ${v.versionId}`}
+                </option>
+              ))}
+            </Select>
+          </>
+        )}
+      </div>
       <form onSubmit={(e) => onSubmit(e, doc, index)}>
-        <label htmlFor={`markdown-${index}`} className="sr-only">
+        <div className="mb-3">
+          <label htmlFor={`version-name-${index}`} className="mb-1 block text-sm font-medium text-gray-700">
+            Version Name (optional)
+          </label>
+          <Textarea
+            id={`version-name-${index}`}
+            name="version_name"
+            placeholder="e.g. Final Draft, Tech Focus, Manager Position..."
+            rows={1}
+            value={versionName}
+            onChange={(e) => onVersionNameChange(index, e.target.value)}
+          />
+        </div>
+        <label htmlFor={`markdown-${index}`} className="mb-1 block text-sm font-medium text-gray-700">
           Content
         </label>
         <Textarea
           id={`markdown-${index}`}
           name="markdown"
           rows={8}
-          onChange={(e) => onContentChange(documentType, e.target.value)}
+          onChange={(e) => onContentChange(e.target.value)}
           value={content}
         />
         {showInstructions ? (
@@ -135,37 +183,77 @@ export default function GenerateDocuments({
 }) {
   const [loading, setLoading] = useState(false);
   const [showGeneratedContent, setShowGeneratedContent] = useState(false);
-  const [documents, setDocuments] = useState<DocumentResult[]>([]);
-  const [documentContentByType, setDocumentContentByType] = useState<Record<string, string>>({});
+  const [documentTypeOrder, setDocumentTypeOrder] = useState<string[]>([]);
+  const [versionsByType, setVersionsByType] = useState<Record<string, VersionSelect[]>>({});
+  const [currentDocByType, setCurrentDocByType] = useState<Record<string, DocumentResult>>({});
+  const [editedContentByType, setEditedContentByType] = useState<Record<string, string>>({});
+  const [versionNamesByIndex, setVersionNamesByIndex] = useState<Record<number, string>>({});
   const [showInstructionsByIndex, setShowInstructionsByIndex] = useState<Record<number, boolean>>({});
   const [instructionsByIndex, setInstructionsByIndex] = useState<Record<number, string>>({});
   const generatedContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (documents.length > 0 && showGeneratedContent && generatedContentRef.current) {
+    if (documentTypeOrder.length > 0 && showGeneratedContent && generatedContentRef.current) {
       generatedContentRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [documents.length, showGeneratedContent]);
+  }, [documentTypeOrder.length, showGeneratedContent]);
 
   const isFormChanged = useCallback(
     (doc: DocumentResult, index: number) => {
-      const documentContent = documentContentByType[doc.document.type] ?? doc.markdown;
-      const markdownChanged = documentContent !== doc.markdown;
-      const instructionsValue = instructionsByIndex[index]?.trim() ?? "";
-      const hasInstructions = showInstructionsByIndex[index] && instructionsValue !== "";
-      return markdownChanged || hasInstructions;
+      const docType = doc.document.type;
+      const editedContent = editedContentByType[docType] ?? doc.markdown;
+      const markdownChanged = editedContent !== doc.markdown;
+      const versionNameVal = versionNamesByIndex[index]?.trim() ?? "";
+      const hasVersionName = versionNameVal !== "";
+      const instructionsVal = instructionsByIndex[index]?.trim() ?? "";
+      const hasInstructions = showInstructionsByIndex[index] && instructionsVal !== "";
+      return markdownChanged || hasVersionName || hasInstructions;
     },
-    [documentContentByType, instructionsByIndex, showInstructionsByIndex]
+    [editedContentByType, versionNamesByIndex, instructionsByIndex, showInstructionsByIndex]
   );
 
+  const getDocumentVersion = async (documentVersionId: number): Promise<DocumentResult | null> => {
+    try {
+      const response = await api.get(`/api/document-versions/${documentVersionId}/`);
+      if (response.status === 200) {
+        return response.data as DocumentResult;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleUpdate = useCallback(
-    (e: React.FormEvent<HTMLFormElement>, doc: DocumentResult, index: number) => {
+    async (e: React.FormEvent<HTMLFormElement>, doc: DocumentResult, index: number) => {
       e.preventDefault();
       if (!isFormChanged(doc, index)) return;
       const payload = buildUpdatePayload(e.currentTarget, doc);
-      // TODO: await api.patch("/api/update-content/", payload);
-      if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-        console.log("Update payload:", payload);
+      try {
+        const response = await api.post("/api/update-content/", payload);
+        if (response.status === 200) {
+          const data = (await response.data) as DocumentResult;
+          const docType = doc.document.type;
+
+          // Add new version to the list
+          const versionName = payload.version_name || `Draft ${data.document_version.id}`;
+          setVersionsByType((prev) => ({
+            ...prev,
+            [docType]: [...(prev[docType] ?? []), { versionId: data.document_version.id, versionName }],
+          }));
+
+          // Update current document and clear edited content
+          setCurrentDocByType((prev) => ({ ...prev, [docType]: data }));
+          setEditedContentByType((prev) => ({ ...prev, [docType]: data.markdown }));
+
+          // Clear version name input for next update
+          setVersionNamesByIndex((prev) => ({ ...prev, [index]: "" }));
+        } else {
+          console.error("Status, text", response.statusText);
+          console.error("Status", response);
+        }
+      } catch (error) {
+        console.error(error);
       }
     },
     [isFormChanged]
@@ -196,18 +284,31 @@ export default function GenerateDocuments({
       const response = await api.post("/api/generate-resume-and-cover-letter/", requestBody);
       if (response.status === 200) {
         const data = await response.data;
+        console.log("!!!!!data", data);
         const docs = Array.isArray(data) ? data : [data];
         const expectedCount = command === "generate_both" ? 2 : 1;
         if (docs.length !== expectedCount) {
           console.error(`Expected ${expectedCount} document(s), got ${docs.length}`, docs);
           return;
         }
-        const contentByType: Record<string, string> = {};
-        docs.forEach((doc: DocumentResult) => {
-          contentByType[doc.document.type] = doc.markdown;
-        });
-        setDocumentContentByType(contentByType);
-        setDocuments(docs);
+
+        const typeOrder: string[] = [];
+        const versions: Record<string, VersionSelect[]> = {};
+        const currentDocs: Record<string, DocumentResult> = {};
+        const editedContent: Record<string, string> = {};
+
+        for (const doc of docs as DocumentResult[]) {
+          const t = doc.document.type;
+          typeOrder.push(t);
+          versions[t] = [{ versionId: doc.document_version.id, versionName: `Draft ${doc.document_version.id}` }];
+          currentDocs[t] = doc;
+          editedContent[t] = doc.markdown;
+        }
+
+        setVersionsByType(versions);
+        setDocumentTypeOrder(typeOrder);
+        setCurrentDocByType(currentDocs);
+        setEditedContentByType(editedContent);
         setShowGeneratedContent(true);
       } else {
         console.error("Status, text", response.statusText);
@@ -220,8 +321,21 @@ export default function GenerateDocuments({
     }
   };
 
-  const setContentForType = useCallback((type: string, value: string) => {
-    setDocumentContentByType((prev) => ({ ...prev, [type]: value }));
+  const setContentForDocType = useCallback((docType: string, value: string) => {
+    setEditedContentByType((prev) => ({ ...prev, [docType]: value }));
+  }, []);
+
+  const handleVersionChange = useCallback(async (docType: string, versionId: number) => {
+    // Fetch the version data from backend
+    const version = await getDocumentVersion(versionId);
+    if (version) {
+      setCurrentDocByType((prev) => ({ ...prev, [docType]: version }));
+      setEditedContentByType((prev) => ({ ...prev, [docType]: version.markdown }));
+    }
+  }, []);
+
+  const setVersionNameForIndex = useCallback((index: number, value: string) => {
+    setVersionNamesByIndex((prev) => ({ ...prev, [index]: value }));
   }, []);
 
   const setInstructionsForIndex = useCallback((index: number, value: string) => {
@@ -241,25 +355,36 @@ export default function GenerateDocuments({
           Generate
         </Button>
       </form>
-      {documents.length > 0 && showGeneratedContent && (
+      {documentTypeOrder.length > 0 && showGeneratedContent && (
         <div ref={generatedContentRef} className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-6">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Generated Documents</h2>
-          {documents.map((doc, index) => (
-            <DocumentEditForm
-              key={`${doc.document.type}-${doc.document_version.id}`}
-              doc={doc}
-              index={index}
-              title={getDocumentTitle(doc.document.type)}
-              content={documentContentByType[doc.document.type] ?? doc.markdown}
-              onContentChange={setContentForType}
-              instructionsValue={instructionsByIndex[index] ?? ""}
-              showInstructions={!!showInstructionsByIndex[index]}
-              onToggleInstructions={toggleInstructions}
-              onInstructionsChange={setInstructionsForIndex}
-              onSubmit={handleUpdate}
-              isSubmitDisabled={!isFormChanged(doc, index)}
-            />
-          ))}
+          {documentTypeOrder.map((docType, index) => {
+            const versions = versionsByType[docType] ?? [];
+            const currentDoc = currentDocByType[docType];
+            if (!currentDoc) return null;
+
+            const content = editedContentByType[docType] ?? currentDoc.markdown;
+            return (
+              <DocumentEditForm
+                key={docType}
+                doc={currentDoc}
+                index={index}
+                title={getDocumentTitle(docType)}
+                content={content}
+                versionName={versionNamesByIndex[index] ?? ""}
+                versions={versions}
+                onVersionChange={(versionId) => handleVersionChange(docType, versionId)}
+                onContentChange={(value) => setContentForDocType(docType, value)}
+                onVersionNameChange={setVersionNameForIndex}
+                instructionsValue={instructionsByIndex[index] ?? ""}
+                showInstructions={!!showInstructionsByIndex[index]}
+                onToggleInstructions={toggleInstructions}
+                onInstructionsChange={setInstructionsForIndex}
+                onSubmit={handleUpdate}
+                isSubmitDisabled={!isFormChanged(currentDoc, index)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
