@@ -2,9 +2,6 @@
 @import "flowbite-react/plugin/tailwindcss";
 @source "../.flowbite-react/class-list.json";
 
-/* Configure dark mode variant for Tailwind v4 */
-@variant dark (&:where(.dark, .dark *));
-
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -35,13 +32,4 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Reusable text color utilities */
-.text-adaptive {
-  @apply text-gray-900 dark:text-white;
-}
-
-.text-adaptive-label {
-  @apply text-sm font-medium text-gray-900 dark:text-white;
 }

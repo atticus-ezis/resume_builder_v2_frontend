@@ -63,12 +63,32 @@ function HistoryDropdown({ history, currentDraftId, onSelectVersion }: HistoryDr
   );
 }
 
+async function onDownload(draft: DocumentDraftResponse) {
+  console.log("Downloading draft:");
+  const requestBody: {
+    document_version_id: number;
+    file_name: string;
+    markdown: string;
+  } = {
+    document_version_id: draft.id,
+    file_name: draft.version_name,
+    markdown: draft.markdown,
+  };
+  try {
+    const response = await api.post(`api/download-content/`, requestBody);
+    responseErrorHandler(response);
+  } catch (error) {
+    console.error("Error downloading draft:", error);
+  }
+}
+
 type DraftDisplayProps = {
   drafts: [DocumentDraftResponse, DocumentDraftHistory[]][];
   showCustomPrompt: { [key: number]: boolean };
   onToggleCustomPrompt: (draftId: number, show: boolean) => void;
   onUpdateDraft: (draft: DocumentDraftResponse) => (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onSelectVersion: (versionId: number) => void;
+  onDownload: (draft: DocumentDraftResponse, e: React.MouseEvent<HTMLButtonElement>) => Promise<void>;
 };
 
 function DraftDisplay({
@@ -77,6 +97,7 @@ function DraftDisplay({
   onToggleCustomPrompt,
   onUpdateDraft,
   onSelectVersion,
+  onDownload,
 }: DraftDisplayProps) {
   const activeDrafts = drafts.filter((draft) => draft[0].id !== 0);
 
@@ -150,9 +171,12 @@ function DraftDisplay({
                   + Add instructions (optional)
                 </Button>
               )}
-              <Button type="submit" className="mt-4">
-                Update {docTypeToText(currentDraft.document.type)}
-              </Button>
+              <div className="mt-4 flex gap-3">
+                <Button type="submit">Update {docTypeToText(currentDraft.document.type)}</Button>
+                <Button type="button" color="gray" onClick={(e) => onDownload(currentDraft, e)}>
+                  Download PDF
+                </Button>
+              </div>
             </form>
           </div>
         );
@@ -260,6 +284,66 @@ export default function GenerateDocumentsNew({
     setShowCustomPrompt({ ...showCustomPrompt, [draftId]: show });
   };
 
+  const handleDownload = async (draft: DocumentDraftResponse, e: React.MouseEvent<HTMLButtonElement>) => {
+    try {
+      // Get form data to check if anything changed
+      const form = e.currentTarget.closest("form");
+      let finalDraftId = draft.id;
+
+      if (form) {
+        const formData = new FormData(form);
+        const currentName = formData.get("draftName") as string;
+        const currentMarkdown = formData.get("markdown") as string;
+
+        // Check if anything changed
+        const markdownChanged = draft.markdown !== currentMarkdown;
+        const versionNameChanged = draft.version_name !== currentName;
+
+        // If anything changed, update first
+        if (markdownChanged || versionNameChanged) {
+          const patchPayload: any = {};
+          if (currentName) patchPayload.version_name = currentName;
+          if (markdownChanged) patchPayload.markdown = currentMarkdown;
+
+          const updateResponse = await api.patch(`api/document-version/${draft.id}/`, patchPayload);
+          responseErrorHandler(updateResponse);
+          const updateData = updateResponse.data;
+          const newDraft = {
+            id: updateData.id,
+            markdown: updateData.markdown,
+            version_name: updateData.version_name,
+            document: {
+              id: draft.document.id,
+              type: draft.document.type,
+            },
+            created_at: updateData.created_at,
+          } as DocumentDraftResponse;
+          const proofedDraft = arrayProof(newDraft);
+          handleNewDraft(proofedDraft);
+          finalDraftId = updateData.id;
+        }
+      }
+
+      // Download the PDF with proper blob response handling
+      const downloadResponse = await api.get(`/api/document-version/${finalDraftId}/pdf/`, { responseType: "blob" });
+
+      // Create blob and trigger download
+      const blob = new Blob([downloadResponse.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${draft.version_name || docTypeToText(draft.document.type)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    }
+  };
+
   const handleSelectVersion = async (versionId: number) => {
     try {
       const response = await api.get(`api/document-version/${versionId}/`);
@@ -298,6 +382,7 @@ export default function GenerateDocumentsNew({
           onToggleCustomPrompt={handleToggleCustomPrompt}
           onUpdateDraft={handleUpdateDraft}
           onSelectVersion={handleSelectVersion}
+          onDownload={handleDownload}
         />
       </div>
     </div>
