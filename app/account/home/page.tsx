@@ -5,7 +5,7 @@ import { api } from "@/app/api";
 import JobSelectionModal from "@/app/components/JobSelectionModal";
 import CreateJobFormModal from "@/app/components/CreateJobFormModal";
 import AddResume from "@/app/components/AddResume";
-import GenerateDocuments from "@/app/components/GenerateDocuments";
+import GenerateDocumentsNew from "@/app/components/GenerateDocumentsNew";
 
 // The backend returns a paginated list of existing jobs like ...
 // {
@@ -152,7 +152,7 @@ export default function Home() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Step 3: Generate documents</h2>
             </div>
             {/* if both are present, call and display the api response*/}
-            <GenerateDocuments selectedResume={selectedResume || EMPTY_RESUME} selectedJob={selectedJob || EMPTY_JOB} />
+            <GenerateDocumentsNew user_context_id={selectedResume?.id || 0} job_description_id={selectedJob?.id || 0} />
           </div>
         </Card>
       </div>

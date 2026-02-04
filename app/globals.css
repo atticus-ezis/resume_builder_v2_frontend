@@ -36,3 +36,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Reusable text color utilities */
+.text-adaptive {
+  @apply text-gray-900 dark:text-white;
+}
+
+.text-adaptive-label {
+  @apply text-sm font-medium text-gray-900 dark:text-white;
+}

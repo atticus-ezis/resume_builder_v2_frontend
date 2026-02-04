@@ -1,41 +1,7 @@
 import { api } from "@/app/api";
-import { Select, Button } from "flowbite-react";
+import { Select, Button, TextInput, Textarea } from "flowbite-react";
 import { useState } from "react";
-
-// 1) Generate initial Document
-// get payload: inherit ids from parent. prompt a new "command" value with choices "generate_resume" | "generate_cover_letter" | "generate_both"
-// payload = {user_context_id, job_description_id, command"}
-// POST url = api/generate-resume-and-cover-letter/
-// response = [{"id", "markdown", "document":{"id", "type"}, "version_name"}...] response.length === 2 if command is "generate_both"
-
-// 2) Store this response. It appears often
-// type DraftResponse = ["id", "markdown", "document":{"id", "type"}, "version_name"]
-// becuase two can exist use both resumeDraftResponse and coverLetterDraftResponse
-// Update draft histories for each. type DraftHistory = ["id", "version_name", "created_at"] --> resumeDraftHistory and coverLetterDraftHistory
-// Update display draft response with the new values
-
-// 3) Display Draft(s) in a new <div>.
-// will be passed either resumeDraftResponse and or coverLetterDraftResponse if either exist
-// Create form with inputs for Drafts. These values will change -> "version_name", "markdown", "instructions"
-// a) handleSubmit:
-// payload = {document_version_id, version_name, markdown (optional), instructions (optional)}
-// POST url = api/update-content -- use "create new draft" button
-// response = ["id", "markdown", "document":{"id", "type"}, "version_name"]
-// repeat step 2
-
-// 4) Manage Draft histories
-// store an array of ["id", "version_name", "created_at"] for each Draft
-// create a selectable dropdown for the Draft histories
-// onSelect:
-// GET url = api/document-version/{document_version_id}
-// response = {
-//   "id": 0,
-//   "document": 0,
-//   "version_number": 0,
-//   "markdown": "string",
-//   "created_at": "2026-02-02T13:04:54.374Z"
-// }
-// clean response and send to repeat 2
+import { AxiosResponse } from "axios";
 
 type DocumentDraftResponse = {
   id: number;
@@ -65,82 +31,301 @@ type DocumentDraftHistory = {
   created_at: string;
 };
 
-type DraftResponseList = {
-  resume: DocumentDraftResponse;
-  coverLetter: DocumentDraftResponse;
+// Extracted Components
+type HistoryDropdownProps = {
+  history: DocumentDraftHistory[];
+  currentDraftId: number;
+  onSelectVersion: (versionId: number) => void;
 };
 
-export default function GenerateDocumentsNew(user_context_id: number, job_description_id: number) {
+function HistoryDropdown({ history, currentDraftId, onSelectVersion }: HistoryDropdownProps) {
+  if (history.length <= 1) {
+    return null;
+  }
+
+  function handleSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    onSelectVersion(Number(e.target.value));
+  }
+
+  return (
+    <>
+      <label htmlFor="version-select" className="text-adaptive-label">
+        Drafts:
+      </label>
+      <Select id="version-select" value={currentDraftId} onChange={handleSelect}>
+        {history.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.version_name || `Draft ${item.id}`}
+          </option>
+        ))}
+      </Select>
+    </>
+  );
+}
+
+type DraftDisplayProps = {
+  drafts: [DocumentDraftResponse, DocumentDraftHistory[]][];
+  showCustomPrompt: { [key: number]: boolean };
+  onToggleCustomPrompt: (draftId: number, show: boolean) => void;
+  onUpdateDraft: (draft: DocumentDraftResponse) => (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSelectVersion: (versionId: number) => void;
+};
+
+function DraftDisplay({
+  drafts,
+  showCustomPrompt,
+  onToggleCustomPrompt,
+  onUpdateDraft,
+  onSelectVersion,
+}: DraftDisplayProps) {
+  const activeDrafts = drafts.filter((draft) => draft[0].id !== 0);
+
+  if (activeDrafts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      {activeDrafts.map((draft, index) => {
+        const currentDraft = draft[0];
+        const currentDraftHistory = draft[1];
+
+        return (
+          <div key={currentDraft.id} className={index > 0 ? "mt-8 border-t border-gray-200 pt-6" : ""}>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <h3 className="text-lg font-semibold text-adaptive">{docTypeToText(currentDraft.document.type)}</h3>
+              <HistoryDropdown
+                history={currentDraftHistory}
+                currentDraftId={currentDraft.id}
+                onSelectVersion={onSelectVersion}
+              />
+            </div>
+            <form onSubmit={onUpdateDraft(currentDraft)}>
+              <div className="mb-3">
+                <label htmlFor={`version-name-${index}`} className="mb-1 block text-adaptive-label">
+                  Version Name (optional)
+                </label>
+                <Textarea
+                  id={`version-name-${index}`}
+                  name="draftName"
+                  placeholder="e.g. Final Draft, Tech Focus, Manager Position..."
+                  rows={1}
+                  defaultValue={currentDraft.version_name}
+                />
+              </div>
+              <label htmlFor={`markdown-${index}`} className="mb-1 block text-adaptive-label">
+                Content
+              </label>
+              <Textarea id={`markdown-${index}`} name="markdown" rows={8} defaultValue={currentDraft.markdown} />
+              {showCustomPrompt[currentDraft.id] ? (
+                <div className="mt-3">
+                  <label htmlFor={`instructions-${index}`} className="mb-1 block text-adaptive-label">
+                    Instructions (optional)
+                  </label>
+                  <Textarea
+                    id={`instructions-${index}`}
+                    name="instructions"
+                    placeholder="e.g. Make it more concise, emphasize leadership..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                  <Button
+                    type="button"
+                    color="light"
+                    size="xs"
+                    className="mt-1"
+                    onClick={() => onToggleCustomPrompt(currentDraft.id, false)}
+                  >
+                    Remove instructions
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  color="light"
+                  size="xs"
+                  className="mt-3"
+                  onClick={() => onToggleCustomPrompt(currentDraft.id, true)}
+                >
+                  + Add instructions (optional)
+                </Button>
+              )}
+              <Button type="submit" className="mt-4">
+                Update {docTypeToText(currentDraft.document.type)}
+              </Button>
+            </form>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function GenerateDocumentsNew({
+  user_context_id,
+  job_description_id,
+}: {
+  user_context_id: number;
+  job_description_id: number;
+}) {
   const [resumeDraftResponse, setResumeDraftResponse] = useState<DocumentDraftResponse>(blankDocumentDraftResponse);
   const [coverLetterDraftResponse, setCoverLetterDraftResponse] =
     useState<DocumentDraftResponse>(blankDocumentDraftResponse);
 
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DocumentDraftHistory[]>([]);
   const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DocumentDraftHistory[]>([]);
+  const [showCustomPrompt, setShowCustomPrompt] = useState<{ [key: number]: boolean }>({});
+  const [loading, setLoading] = useState(false);
 
-  async function handleGenerateCommand(e: React.ChangeEvent<HTMLFormElement>) {
+  async function handleGenerateCommand(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+
     if (!user_context_id || !job_description_id) {
+      setLoading(false);
       return;
     }
-    const command = e.target.value;
+
+    const formData = new FormData(e.currentTarget);
+    const command = formData.get("command") as string;
     const payload = { user_context_id, job_description_id, command };
+
     try {
-      const response = await api.post(`api/generate-resume-and-cover-letter/`, {
-        payload,
-      });
-      const doc_versions = response.data; // array
+      const response = await api.post(`api/generate-resume-and-cover-letter/`, payload);
+      responseErrorHandler(response);
+      const doc_drafts = response.data as DocumentDraftResponse[];
       const expected_length = command === "generate_both" ? 2 : 1;
-      if (doc_versions.length !== expected_length) {
-        throw new Error("Expected " + expected_length + " documents, got " + doc_versions.length);
+      if (doc_drafts.length !== expected_length) {
+        throw new Error("Expected " + expected_length + " documents, got " + doc_drafts.length);
       }
-      for (const doc_version of doc_versions) {
-        handleNewDraft(doc_version);
-      }
+      handleNewDraft(doc_drafts);
     } catch (error) {
       console.error(error);
       console.log("payload:", payload);
+    } finally {
+      setLoading(false);
     }
   }
 
-  function handleNewDraft(draft: DocumentDraftResponse) {
-    if (draft.document.type === "resume") {
-      setResumeDraftResponse(draft);
-      setResumeDraftHistory([
-        ...resumeDraftHistory,
-        { id: draft.id, version_name: draft.version_name, created_at: draft.created_at },
-      ]);
-    } else if (draft.document.type === "cover_letter") {
-      setCoverLetterDraftResponse(draft);
-      setCoverLetterDraftHistory([
-        ...coverLetterDraftHistory,
-        { id: draft.id, version_name: draft.version_name, created_at: draft.created_at },
-      ]);
+  function handleNewDraft(drafts: DocumentDraftResponse[]) {
+    for (const draft of drafts) {
+      if (draft.document.type === "resume") {
+        setResumeDraftResponse(draft);
+        setResumeDraftHistory((prev) => [
+          ...prev,
+          { id: draft.id, version_name: draft.version_name, created_at: draft.created_at },
+        ]);
+      } else if (draft.document.type === "cover_letter") {
+        setCoverLetterDraftResponse(draft);
+        setCoverLetterDraftHistory((prev) => [
+          ...prev,
+          { id: draft.id, version_name: draft.version_name, created_at: draft.created_at },
+        ]);
+      }
     }
   }
 
-  function DraftDisplay({ resume, coverLetter }: DraftResponseList) {
-    if (!resume && !coverLetter) {
-      return;
-    }
-    const drafts = [];
+  function handleUpdateDraft(draft: DocumentDraftResponse) {
+    return async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      const version_name = formData.get("draftName") as string;
+      const markdown = draft.markdown !== formData.get("markdown") ? (formData.get("markdown") as string) : null;
+      const instructions = (formData.get("instructions") as string) || null;
 
-    return <div>Hello</div>;
+      if (!version_name && !markdown && !instructions) {
+        return;
+      }
+
+      // Build payload, excluding empty/null optional fields
+      const payload: any = {
+        document_version_id: draft.id,
+      };
+      if (version_name) payload.version_name = version_name;
+      if (markdown) payload.markdown = markdown;
+      if (instructions) payload.instructions = instructions;
+
+      try {
+        const response = await api.post("api/update-content/", payload);
+        responseErrorHandler(response);
+        const newDraft = arrayProof(response.data) as DocumentDraftResponse[];
+        handleNewDraft(newDraft);
+      } catch (error) {
+        console.error("Error updating draft:", error);
+      }
+    };
   }
+
+  const handleToggleCustomPrompt = (draftId: number, show: boolean) => {
+    setShowCustomPrompt({ ...showCustomPrompt, [draftId]: show });
+  };
+
+  const handleSelectVersion = async (versionId: number) => {
+    try {
+      const response = await api.get(`api/document-version/${versionId}/`);
+      responseErrorHandler(response);
+      const newDraft = arrayProof(response.data) as DocumentDraftResponse[];
+      handleNewDraft(newDraft);
+    } catch (error) {
+      console.error("Error selecting version:", error);
+    }
+  };
 
   return (
-    <div>
-      <h1>Generate Resume or Cover Letter</h1>
-      <form onSubmit={handleGenerateCommand}>
-        <Select>
-          <option value="generate_resume">Resume</option>
-          <option value="generate_cover_letter">Cover Letter</option>
-          <option value="generate_both">Both</option>
-        </Select>
-        <Button type="submit">Generate</Button>
-      </form>
+    <div className="space-y-6">
       <div>
-        <DraftDisplay resume={resumeDraftResponse} coverLetter={coverLetterDraftResponse} />
+        <form onSubmit={handleGenerateCommand} className="flex flex-col gap-3">
+          <label htmlFor="command-select" className="text-adaptive-label">
+            Select Document Type:
+          </label>
+          <Select id="command-select" name="command" defaultValue="generate_resume" disabled={loading}>
+            <option value="generate_resume">Resume</option>
+            <option value="generate_cover_letter">Cover Letter</option>
+            <option value="generate_both">Both</option>
+          </Select>
+          <Button type="submit" disabled={loading} className="w-fit">
+            {loading ? "Generating..." : "Generate"}
+          </Button>
+        </form>
+      </div>
+      <div>
+        <DraftDisplay
+          drafts={[
+            [resumeDraftResponse, resumeDraftHistory],
+            [coverLetterDraftResponse, coverLetterDraftHistory],
+          ]}
+          showCustomPrompt={showCustomPrompt}
+          onToggleCustomPrompt={handleToggleCustomPrompt}
+          onUpdateDraft={handleUpdateDraft}
+          onSelectVersion={handleSelectVersion}
+        />
       </div>
     </div>
   );
+}
+
+/// helper functions
+function docTypeToText(doc_type: string): string {
+  switch (doc_type) {
+    case "resume":
+      return "Resume";
+    case "cover_letter":
+      return "Cover Letter";
+    default:
+      return doc_type;
+  }
+}
+
+function arrayProof(data: DocumentDraftResponse | DocumentDraftResponse[]): DocumentDraftResponse[] {
+  if (!Array.isArray(data)) {
+    return [data];
+  }
+  return data;
+}
+
+function responseErrorHandler(response: AxiosResponse) {
+  if (response.status !== 200) {
+    throw new Error("Error updating draft: " + response.statusText);
+  }
+  return response;
 }
