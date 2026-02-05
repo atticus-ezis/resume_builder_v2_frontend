@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { Button } from "flowbite-react";
 import { api } from "@/app/api";
 import { formatDate } from "@/app/lib/formatDate";
-import PaginationReader from "@/app/components/PaginationReader";
-import ResumeUploadForm, { type Resume } from "@/app/components/ResumeUploadForm";
+import PaginationReader from "@/app/components/PaginationModal";
+import ResumeUploadForm from "@/app/components/ResumeUploadForm";
+import type { Resume } from "@/app/account/home/page";
 
 type PaginatedExistingResumes = {
   count: number;
@@ -32,12 +33,16 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
   async function checkExistingResumes() {
     console.log("Checking existing resumes");
     const response = await api.get("/api/applicant/");
+    console.log("Response:", response.data);
     if (response.status === 200 && response.data.count > 0) {
       setHasExistingResumes(true);
+      setPaginatedExistingResumes(response.data);
     }
   }
 
-  console.log("Has existing resumes:", hasExistingResumes);
+  useEffect(() => {
+    checkExistingResumes();
+  }, []);
 
   async function paginationCall(url: string | null) {
     if (!url) {
@@ -52,16 +57,6 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
       console.error("Error fetching resumes:", err);
     }
   }
-
-  useEffect(() => {
-    checkExistingResumes();
-  }, []);
-
-  useEffect(() => {
-    if (showExistingResumesModal) {
-      paginationCall(null);
-    }
-  }, [showExistingResumesModal]);
 
   const setResume = (resume: Resume | null) => {
     setSelectedResume(resume);
@@ -104,10 +99,12 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
         title="Existing Resumes"
         paginationData={paginatedExistingResumes}
         renderItem={(resume) => (
-          <>
+          <div className="flex justify-between">
             <span className="font-semibold text-gray-900 dark:text-white">{resume.name}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Updated: {formatDate(resume.updated_at)}</span>
-          </>
+            <span className="text-xs text-gray-500 dark:text-gray-400 justify-end">
+              {formatDate(resume.updated_at)}
+            </span>
+          </div>
         )}
         onSelect={setResume}
         show={showExistingResumesModal}

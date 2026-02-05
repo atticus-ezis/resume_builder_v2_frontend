@@ -1,7 +1,7 @@
 "use client";
 import { Card } from "flowbite-react";
 import { useState } from "react";
-import JobSelector from "@/app/components/AddJob";
+import AddJob from "@/app/components/AddJob";
 import AddResume from "@/app/components/AddResume";
 import GenerateDocumentsNew from "@/app/components/GenerateDocumentsNew";
 
@@ -11,7 +11,7 @@ type Job = {
   company_name: string;
 };
 
-type Resume = {
+export type Resume = {
   id: number;
   name: string;
   updated_at: string;
@@ -49,7 +49,7 @@ export default function Home() {
                 Create a new job or pick one you&apos;ve already added
               </p>
             </div>
-            <JobSelector onJobSelect={handleJobSelect} />
+            <AddJob onJobSelect={handleJobSelect} />
           </div>
         </Card>
 

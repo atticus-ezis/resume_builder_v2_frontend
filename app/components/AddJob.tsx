@@ -4,7 +4,7 @@ import { Button } from "flowbite-react";
 import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import CreateJobFormModal from "@/app/components/CreateJobFormModal";
-import PaginationReader from "@/app/components/PaginationReader";
+import PaginationModal from "@/app/components/PaginationModal";
 
 // sets JobID useState for homepage with onJobSelect
 
@@ -108,7 +108,7 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
           </div>
         )}
       </div>
-      <PaginationReader<Job>
+      <PaginationModal<Job>
         title="Existing Jobs"
         paginationData={paginatedExistingJobs}
         renderItem={(job) => (
@@ -122,11 +122,7 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
         onClose={handleOnClose}
         onPageChange={paginationCall}
       />
-      <CreateJobFormModal
-        show={showNewJobModal}
-        onClose={() => setShowNewJobModal(false)}
-        onJobSelect={setJob}
-      />
+      <CreateJobFormModal show={showNewJobModal} onClose={() => setShowNewJobModal(false)} onJobSelect={setJob} />
     </>
   );
 }

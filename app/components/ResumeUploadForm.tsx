@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { FileInput, Label, Button, TextInput } from "flowbite-react";
 import { api } from "@/app/api";
-
-export type Resume = {
-  id: number;
-  name: string;
-  updated_at: string;
-};
+import type { Resume } from "@/app/account/home/page";
 
 type ResumeUploadFormProps = {
   setResume: (resume: Resume) => void;

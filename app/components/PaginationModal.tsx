@@ -1,7 +1,6 @@
 "use client";
 
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from "flowbite-react";
-import PaginationComp from "@/app/components/PaginationComp";
 
 type PaginatedData<T> = {
   count: number;
@@ -10,7 +9,7 @@ type PaginatedData<T> = {
   previous: string;
 };
 
-type PaginationReaderProps<T extends { id: number }> = {
+type PaginationModalProps<T extends { id: number }> = {
   title: string;
   paginationData: PaginatedData<T>;
   renderItem: (item: T) => React.ReactNode;
@@ -20,7 +19,7 @@ type PaginationReaderProps<T extends { id: number }> = {
   onPageChange: (url: string | null) => void;
 };
 
-export default function PaginationReader<T extends { id: number }>({
+export default function PaginationModal<T extends { id: number }>({
   title,
   paginationData,
   renderItem,
@@ -28,11 +27,16 @@ export default function PaginationReader<T extends { id: number }>({
   show,
   onClose,
   onPageChange,
-}: PaginationReaderProps<T>) {
+}: PaginationModalProps<T>) {
+  const hasNext = Boolean(paginationData.next?.trim());
+  const hasPrevious = Boolean(paginationData.previous?.trim());
   return (
     <Modal show={show} onClose={onClose}>
       <ModalHeader>
         <span className="text-2xl font-bold">{title}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {paginationData.count} result{paginationData.count !== 1 ? "s" : ""}
+        </span>
       </ModalHeader>
       <ModalBody>
         <div className="space-y-4">
@@ -50,12 +54,26 @@ export default function PaginationReader<T extends { id: number }>({
               </div>
             ))}
           </div>
-          <PaginationComp
-            totalItems={paginationData.count}
-            next={paginationData.next}
-            previous={paginationData.previous}
-            onPageChange={onPageChange}
-          />
+          {paginationData.count > 10 && (
+            <div className="flex gap-2 justify-center">
+              <Button
+                color="gray"
+                outline
+                disabled={!hasPrevious}
+                onClick={() => onPageChange(paginationData.previous ?? null)}
+              >
+                Previous
+              </Button>
+              <Button
+                color="gray"
+                outline
+                disabled={!hasNext}
+                onClick={() => onPageChange(paginationData.next ?? null)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
       </ModalBody>
       <ModalFooter>
