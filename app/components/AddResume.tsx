@@ -1,279 +1,119 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { FileInput, Label, Button, Modal, ModalHeader, ModalBody, ModalFooter, TextInput } from "flowbite-react";
+import { useState, useEffect } from "react";
+import { Button } from "flowbite-react";
 import { api } from "@/app/api";
 import { formatDate } from "@/app/lib/formatDate";
-
-type ExistingResume = {
-  id: number;
-  name: string;
-  updated_at: string;
-};
+import PaginationReader from "@/app/components/PaginationReader";
+import ResumeUploadForm, { type Resume } from "@/app/components/ResumeUploadForm";
 
 type PaginatedExistingResumes = {
   count: number;
-  results: ExistingResume[];
+  results: Resume[];
   next: string;
   previous: string;
 };
 
 type AddResumeProps = {
-  onResumeSelect?: (resume: ExistingResume) => void;
+  onResumeSelect?: (resume: Resume | null) => void;
 };
-
-const PDF_ACCEPT = "application/pdf";
-
-const EMPTY_PAGINATED: PaginatedExistingResumes = {
-  count: 0,
-  results: [],
-  next: "",
-  previous: "",
-};
-
-function parseResumeList(data: unknown): { results: ExistingResume[]; count: number; next: string; previous: string } {
-  if (!data || typeof data !== "object") return { ...EMPTY_PAGINATED };
-  const d = data as Record<string, unknown>;
-  const results = Array.isArray(d.results)
-    ? d.results
-    : Array.isArray(d.data)
-      ? d.data
-      : Array.isArray(d.items)
-        ? d.items
-        : Array.isArray(data)
-          ? (data as ExistingResume[])
-          : [];
-  const count = typeof d.count === "number" ? d.count : results.length;
-  return {
-    results,
-    count,
-    next: typeof d.next === "string" ? d.next : "",
-    previous: typeof d.previous === "string" ? d.previous : "",
-  };
-}
 
 export default function AddResume({ onResumeSelect }: AddResumeProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedResume, setSelectedResume] = useState<ExistingResume | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [paginatedResumes, setPaginatedResumes] = useState<PaginatedExistingResumes>(EMPTY_PAGINATED);
-  const [isLoadingResumes, setIsLoadingResumes] = useState(false);
+  const [showExistingResumesModal, setShowExistingResumesModal] = useState(false);
+  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
+  const [hasExistingResumes, setHasExistingResumes] = useState(true);
+  const [paginatedExistingResumes, setPaginatedExistingResumes] = useState<PaginatedExistingResumes>({
+    count: 0,
+    results: [],
+    next: "",
+    previous: "",
+  });
 
-  const hasExistingResumes = paginatedResumes.results.length > 0;
-  const results = paginatedResumes.results ?? [];
+  async function checkExistingResumes() {
+    console.log("Checking existing resumes");
+    const response = await api.get("/api/applicant/");
+    if (response.status === 200 && response.data.count > 0) {
+      setHasExistingResumes(true);
+    }
+  }
 
-  const fetchResumes = useCallback(async (url?: string) => {
+  console.log("Has existing resumes:", hasExistingResumes);
+
+  async function paginationCall(url: string | null) {
+    if (!url) {
+      url = "/api/applicant/";
+    }
     try {
-      setIsLoadingResumes(true);
-      const requestUrl = url ?? "/api/applicant/";
-      const response = await api.get(requestUrl);
-      if (response.status !== 200) return;
-      const parsed = parseResumeList(response.data);
-      setPaginatedResumes(parsed);
+      const response = await api.get(url);
+      if (response.status === 200 && response.data.count > 0) {
+        setPaginatedExistingResumes(response.data);
+      }
     } catch (err) {
       console.error("Error fetching resumes:", err);
-      setPaginatedResumes(EMPTY_PAGINATED);
-    } finally {
-      setIsLoadingResumes(false);
     }
+  }
+
+  useEffect(() => {
+    checkExistingResumes();
   }, []);
 
   useEffect(() => {
-    fetchResumes();
-  }, [fetchResumes]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    setError(null);
-    setFieldErrors((prev) => ({ ...prev, file: "" }));
-    if (selectedFile) {
-      if (selectedFile.type !== "application/pdf") {
-        setFieldErrors((prev) => ({ ...prev, file: "Please select a PDF file" }));
-        setFile(null);
-        return;
-      }
-      setFile(selectedFile);
-    } else {
-      setFile(null);
+    if (showExistingResumesModal) {
+      paginationCall(null);
     }
-  };
+  }, [showExistingResumesModal]);
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value);
-    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" }));
-  };
-
-  const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setFieldErrors({});
-
-    const newErrors: Record<string, string> = {};
-    if (!file) newErrors.file = "Please select a PDF file";
-    if (!name.trim()) newErrors.name = "Name is required";
-    if (Object.keys(newErrors).length > 0) {
-      setFieldErrors(newErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file as File);
-      formData.append("name", name.trim());
-
-      const response = await api.post("/api/applicant/upload-pdf/", formData);
-
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.data?.detail || "Failed to upload resume");
-      }
-
-      const resume: ExistingResume = {
-        id: response.data.id,
-        name: response.data.name ?? name.trim(),
-        updated_at: response.data.updated_at ?? new Date().toISOString(),
-      };
-      setSelectedResume(resume);
-      onResumeSelect?.(resume);
-      setFile(null);
-      setName("");
-      if (e.target instanceof HTMLFormElement) e.target.reset();
-
-      await fetchResumes();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred while uploading the resume";
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSelectResume = (resume: ExistingResume) => {
+  const setResume = (resume: Resume | null) => {
     setSelectedResume(resume);
     onResumeSelect?.(resume);
-    setShowModal(false);
   };
 
+  const handleOnClose = () => setShowExistingResumesModal(false);
+
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleUploadSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="resume-file">Upload resume (PDF)</Label>
-          <FileInput id="resume-file" accept={PDF_ACCEPT} onChange={handleFileChange} className="mt-1" />
-          {fieldErrors.file && <p className="mt-1 text-sm text-red-600 dark:text-red-500">{fieldErrors.file}</p>}
-        </div>
-        <div>
-          <Label htmlFor="resume-name">Name</Label>
-          <TextInput
-            id="resume-name"
-            name="name"
-            placeholder="e.g. My Resume 2024"
-            value={name}
-            onChange={handleNameChange}
-            className="mt-1"
-          />
-          {fieldErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-500">{fieldErrors.name}</p>}
-        </div>
-
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        <Button type="submit" className="w-fit" disabled={isLoading}>
-          {isLoading ? "Uploading..." : "Upload"}
-        </Button>
-      </form>
-
-      {hasExistingResumes && (
+    <>
+      <div className="space-y-4">
+        <ResumeUploadForm setResume={setResume} onUploadSuccess={() => paginationCall(null)} />
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-gray-500 dark:text-gray-400">or</span>
-          <Button onClick={() => setShowModal(true)} color="gray" outline className="w-fit">
-            Choose from existing resumes
-          </Button>
+          {hasExistingResumes && (
+            <>
+              <span className="text-gray-500 dark:text-gray-400">or</span>
+              <Button onClick={() => setShowExistingResumesModal(true)} color="gray" outline className="w-fit">
+                Choose from an existing resume
+              </Button>
+            </>
+          )}
         </div>
-      )}
 
-      {selectedResume && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
-          <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
-            Selected: <span className="font-semibold">{selectedResume.name}</span>
-            <span className="ml-1 text-gray-600 dark:text-gray-400">
-              (Updated {formatDate(selectedResume.updated_at)})
+        {selectedResume && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+              Selected: <span className="font-semibold">{selectedResume.name}</span>
+              <span className="ml-1 text-gray-600 dark:text-gray-400">
+                (Updated {formatDate(selectedResume.updated_at)})
+              </span>
             </span>
-          </span>
-          <Button size="xs" color="gray" onClick={() => setSelectedResume(null)}>
-            Clear
-          </Button>
-        </div>
-      )}
-
-      <Modal show={showModal} onClose={() => setShowModal(false)} size="2xl">
-        <ModalHeader>Choose from existing resumes</ModalHeader>
-        <ModalBody>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {paginatedResumes.count} resume{paginatedResumes.count !== 1 ? "s" : ""} found
-            </p>
-
-            {isLoadingResumes ? (
-              <div className="py-8 text-center text-gray-500 dark:text-gray-400">Loading resumes...</div>
-            ) : results.length === 0 ? (
-              <div className="py-8 text-center text-gray-500 dark:text-gray-400">No resumes found</div>
-            ) : (
-              <div className="max-h-96 space-y-2 overflow-y-auto">
-                {results.map((resume) => (
-                  <div
-                    key={resume.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleSelectResume(resume)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSelectResume(resume)}
-                    className="cursor-pointer rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                  >
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{resume.name}</h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Updated: {formatDate(resume.updated_at)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <div className="flex w-full items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                onClick={() => paginatedResumes.previous && fetchResumes(paginatedResumes.previous)}
-                disabled={!paginatedResumes.previous || isLoadingResumes}
-                color="gray"
-                outline
-              >
-                Previous
-              </Button>
-              <Button
-                onClick={() => paginatedResumes.next && fetchResumes(paginatedResumes.next)}
-                disabled={!paginatedResumes.next || isLoadingResumes}
-                color="gray"
-                outline
-              >
-                Next
-              </Button>
-            </div>
-            <Button onClick={() => setShowModal(false)} color="gray">
-              Close
+            <Button size="xs" color="gray" onClick={() => setResume(null)}>
+              Clear
             </Button>
           </div>
-        </ModalFooter>
-      </Modal>
-    </div>
+        )}
+      </div>
+
+      <PaginationReader<Resume>
+        title="Existing Resumes"
+        paginationData={paginatedExistingResumes}
+        renderItem={(resume) => (
+          <>
+            <span className="font-semibold text-gray-900 dark:text-white">{resume.name}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Updated: {formatDate(resume.updated_at)}</span>
+          </>
+        )}
+        onSelect={setResume}
+        show={showExistingResumesModal}
+        onClose={handleOnClose}
+        onPageChange={paginationCall}
+      />
+    </>
   );
 }

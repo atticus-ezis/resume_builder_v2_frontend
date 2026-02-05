@@ -108,6 +108,7 @@ export default function CreateJobFormModal({ show, onClose, onJobSelect }: Creat
             placeholder="Company Overview"
             value={jobContext.company_overview}
             onChange={handleChange}
+            rows={4}
           />
           {fieldErrors.company_overview && (
             <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -120,6 +121,7 @@ export default function CreateJobFormModal({ show, onClose, onJobSelect }: Creat
             placeholder="Job Description"
             value={jobContext.job_description}
             onChange={handleChange}
+            rows={10}
           />
           {fieldErrors.job_description && (
             <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -132,6 +134,7 @@ export default function CreateJobFormModal({ show, onClose, onJobSelect }: Creat
             placeholder="Job Requirements"
             value={jobContext.job_requirements}
             onChange={handleChange}
+            rows={10}
           />
           {fieldErrors.job_requirements && (
             <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
