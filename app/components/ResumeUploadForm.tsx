@@ -16,6 +16,7 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,6 +44,7 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
   const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     setFieldErrors({});
 
     const newErrors: Record<string, string> = {};
@@ -60,10 +62,8 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
       formData.append("name", name.trim());
 
       const response = await api.post("/api/applicant/upload-pdf/", formData);
-
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.data?.detail || "Failed to upload resume");
-      }
+      console.log("!!!!!! response", response);
+      console.log("!!!!!! response.data", response.data);
 
       const resume: Resume = {
         id: response.data.id,
@@ -73,12 +73,45 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
       setResume(resume);
       setFile(null);
       setName("");
+      if (response.data.message != null && String(response.data.message).trim() !== "") {
+        setMessage(String(response.data.message));
+      }
       if (e.target instanceof HTMLFormElement) e.target.reset();
 
       onUploadSuccess?.();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred while uploading the resume";
-      setError(message);
+      console.log("!!!!!! err", err);
+      console.log("!!!!!! err.response", (err as any).response);
+      console.log("!!!!!! err.response.data", (err as any).response.data);
+      const axiosError = err as { response?: { status: number; data: unknown } };
+      const status = axiosError.response?.status;
+      const data = axiosError.response?.data;
+      if (status === 400 && data !== undefined && data !== null) {
+        let message: string;
+        if (Array.isArray(data) && data.length > 0 && typeof data[0] === "string") {
+          message = data[0];
+        } else if (typeof data === "string") {
+          message = data;
+        } else if (typeof data === "object" && data !== null && "detail" in data) {
+          const detail = (data as { detail: unknown }).detail;
+          message =
+            Array.isArray(detail) && detail.length > 0 && typeof detail[0] === "string" ? detail[0] : String(detail);
+        } else if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+          const obj = data as Record<string, unknown>;
+          const firstValue = Object.values(obj)[0];
+          message =
+            Array.isArray(firstValue) && firstValue.length > 0 && typeof firstValue[0] === "string"
+              ? firstValue[0]
+              : typeof firstValue === "string"
+                ? firstValue
+                : String(data);
+        } else {
+          message = String(data);
+        }
+        setError(message);
+        return;
+      }
+      setError(err instanceof Error ? err.message : "An error occurred while uploading the resume");
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +140,12 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      )}
+
+      {message && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+          <p className="text-sm text-green-800 dark:text-green-200">{message}</p>
         </div>
       )}
 

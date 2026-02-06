@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "flowbite-react";
 import { api } from "@/app/api";
 import { formatDate } from "@/app/lib/formatDate";
-import PaginationReader from "@/app/components/PaginationModal";
+import PaginationModal from "@/app/components/PaginationModal";
 import ResumeUploadForm from "@/app/components/ResumeUploadForm";
 import type { Resume } from "@/app/account/home/page";
 
@@ -95,7 +95,7 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
         )}
       </div>
 
-      <PaginationReader<Resume>
+      <PaginationModal<Resume>
         title="Existing Resumes"
         paginationData={paginatedExistingResumes}
         renderItem={(resume) => (
