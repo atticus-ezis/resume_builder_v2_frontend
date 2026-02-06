@@ -1,6 +1,6 @@
 import { api } from "@/app/api";
 import { Select, Button, TextInput, Textarea } from "flowbite-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AxiosResponse } from "axios";
 
 type DocumentDraftResponse = {
@@ -185,12 +185,14 @@ function DraftDisplay({
   );
 }
 
-export default function GenerateDocumentsNew({
+export default function GenerateDocuments({
   user_context_id,
   job_description_id,
+  onMissingSelection,
 }: {
   user_context_id: number;
   job_description_id: number;
+  onMissingSelection?: (missing: "job" | "resume") => void;
 }) {
   const [resumeDraftResponse, setResumeDraftResponse] = useState<DocumentDraftResponse>(blankDocumentDraftResponse);
   const [coverLetterDraftResponse, setCoverLetterDraftResponse] =
@@ -200,13 +202,51 @@ export default function GenerateDocumentsNew({
   const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DocumentDraftHistory[]>([]);
   const [showCustomPrompt, setShowCustomPrompt] = useState<{ [key: number]: boolean }>({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // async function getTestDrafts() {
+  //   const response = await api.get(`api/document-version/1/`);
+  //   responseErrorHandler(response);
+  //   const doc_draft = response.data as DocumentDraftResponse[];
+  //   console.log("!!!!!! doc_draft", doc_draft);
+  //   type DocumentDraftResponse = {
+  //     id: number;
+  //     markdown: string;
+  //     version_name: string;
+  //     document: {
+  //       id: number;
+  //       type: string;
+  //     };
+  //     created_at: string;
+  //   };
+  //   setResumeDraftResponse({
+  //     id: doc_draft.id,
+  //     markdown: doc_draft.markdown,
+  //     version_name: doc_draft.version_name,
+  //     document: {
+  //       id: doc_draft.document.id,
+  //       type: "resume",
+  //     },
+  //     created_at: doc_draft.created_at,
+  //   } as DocumentDraftResponse);
+  // }
+  // useEffect(() => {
+  //   getTestDrafts();
+  // }, []);
 
   async function handleGenerateCommand(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
     setLoading(true);
 
-    if (!user_context_id || !job_description_id) {
+    if (!job_description_id) {
       setLoading(false);
+      onMissingSelection?.("job");
+      return;
+    }
+    if (!user_context_id) {
+      setLoading(false);
+      onMissingSelection?.("resume");
       return;
     }
 
@@ -253,11 +293,13 @@ export default function GenerateDocumentsNew({
     return async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const formData = new FormData(e.currentTarget);
-      const version_name = formData.get("draftName") as string;
+      const version_name =
+        draft.version_name !== formData.get("draftName") ? (formData.get("draftName") as string) : null;
       const markdown = draft.markdown !== formData.get("markdown") ? (formData.get("markdown") as string) : null;
       const instructions = (formData.get("instructions") as string) || null;
 
       if (!version_name && !markdown && !instructions) {
+        setError("No changes made");
         return;
       }
 
@@ -270,6 +312,7 @@ export default function GenerateDocumentsNew({
       if (instructions) payload.instructions = instructions;
 
       try {
+        setError(null);
         const response = await api.post("api/update-content/", payload);
         responseErrorHandler(response);
         const newDraft = arrayProof(response.data) as DocumentDraftResponse[];
@@ -357,6 +400,11 @@ export default function GenerateDocumentsNew({
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      )}
       <div>
         <form onSubmit={handleGenerateCommand} className="flex flex-col gap-3">
           <label htmlFor="command-select" className="text-adaptive-label">

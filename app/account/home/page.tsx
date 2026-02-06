@@ -1,9 +1,10 @@
 "use client";
+
 import { Card } from "flowbite-react";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import AddJob from "@/app/components/AddJob";
 import AddResume from "@/app/components/AddResume";
-import GenerateDocumentsNew from "@/app/components/GenerateDocumentsNew";
+import GenerateDocuments from "@/app/components/GenerateDocuments";
 
 type Job = {
   id: number;
@@ -20,14 +21,28 @@ export type Resume = {
 export default function Home() {
   const [selectedJobId, setSelectedJobId] = useState<number>(0);
   const [selectedResumeId, setSelectedResumeId] = useState<number>(0);
+  const [missingStep, setMissingStep] = useState<"job" | "resume" | null>(null);
+  const jobSectionRef = useRef<HTMLDivElement>(null);
+  const resumeSectionRef = useRef<HTMLDivElement>(null);
 
-  const handleJobSelect = (job: Job | null) => {
+  const handleJobSelect = useCallback((job: Job | null) => {
     setSelectedJobId(job?.id || 0);
-  };
+    setMissingStep(null);
+  }, []);
 
-  const handleResumeSelect = (resume: Resume | null) => {
+  const handleResumeSelect = useCallback((resume: Resume | null) => {
     setSelectedResumeId(resume?.id || 0);
-  };
+    setMissingStep(null);
+  }, []);
+
+  const handleMissingSelection = useCallback((missing: "job" | "resume") => {
+    setMissingStep(missing);
+    if (missing === "job") {
+      jobSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      resumeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900">
@@ -41,7 +56,7 @@ export default function Home() {
         </div>
 
         {/* Step 1: Job Selection */}
-        <Card>
+        <Card ref={jobSectionRef}>
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Step 1: Add job details</h2>
@@ -49,16 +64,30 @@ export default function Home() {
                 Create a new job or pick one you&apos;ve already added
               </p>
             </div>
+            {missingStep === "job" && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <p className="text-sm text-red-800 dark:text-red-200">
+                  Please select a job before generating documents.
+                </p>
+              </div>
+            )}
             <AddJob onJobSelect={handleJobSelect} />
           </div>
         </Card>
 
         {/* Step 2: Resume Upload */}
-        <Card>
+        <Card ref={resumeSectionRef}>
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Step 2: Add your background</h2>
             </div>
+            {missingStep === "resume" && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <p className="text-sm text-red-800 dark:text-red-200">
+                  Please select a resume before generating documents.
+                </p>
+              </div>
+            )}
             <AddResume onResumeSelect={handleResumeSelect} />
           </div>
         </Card>
@@ -69,7 +98,11 @@ export default function Home() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Step 3: Generate documents</h2>
             </div>
-            <GenerateDocumentsNew user_context_id={selectedResumeId} job_description_id={selectedJobId} />
+            <GenerateDocuments
+              user_context_id={selectedResumeId}
+              job_description_id={selectedJobId}
+              onMissingSelection={handleMissingSelection}
+            />
           </div>
         </Card>
       </div>
