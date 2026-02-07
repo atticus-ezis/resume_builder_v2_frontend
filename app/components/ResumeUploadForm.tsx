@@ -79,39 +79,8 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
       if (e.target instanceof HTMLFormElement) e.target.reset();
 
       onUploadSuccess?.();
-    } catch (err: unknown) {
-      console.log("!!!!!! err", err);
-      console.log("!!!!!! err.response", (err as any).response);
-      console.log("!!!!!! err.response.data", (err as any).response.data);
-      const axiosError = err as { response?: { status: number; data: unknown } };
-      const status = axiosError.response?.status;
-      const data = axiosError.response?.data;
-      if (status === 400 && data !== undefined && data !== null) {
-        let message: string;
-        if (Array.isArray(data) && data.length > 0 && typeof data[0] === "string") {
-          message = data[0];
-        } else if (typeof data === "string") {
-          message = data;
-        } else if (typeof data === "object" && data !== null && "detail" in data) {
-          const detail = (data as { detail: unknown }).detail;
-          message =
-            Array.isArray(detail) && detail.length > 0 && typeof detail[0] === "string" ? detail[0] : String(detail);
-        } else if (typeof data === "object" && data !== null && !Array.isArray(data)) {
-          const obj = data as Record<string, unknown>;
-          const firstValue = Object.values(obj)[0];
-          message =
-            Array.isArray(firstValue) && firstValue.length > 0 && typeof firstValue[0] === "string"
-              ? firstValue[0]
-              : typeof firstValue === "string"
-                ? firstValue
-                : String(data);
-        } else {
-          message = String(data);
-        }
-        setError(message);
-        return;
-      }
-      setError(err instanceof Error ? err.message : "An error occurred while uploading the resume");
+    } catch {
+      // Toast shown by api interceptor
     } finally {
       setIsLoading(false);
     }

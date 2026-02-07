@@ -31,12 +31,14 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
   });
 
   async function checkExistingResumes() {
-    console.log("Checking existing resumes");
-    const response = await api.get("/api/applicant/");
-    console.log("Response:", response.data);
-    if (response.status === 200 && response.data.count > 0) {
-      setHasExistingResumes(true);
-      setPaginatedExistingResumes(response.data);
+    try {
+      const response = await api.get("/api/applicant/");
+      if (response.status === 200 && response.data.count > 0) {
+        setHasExistingResumes(true);
+        setPaginatedExistingResumes(response.data);
+      }
+    } catch {
+      // Toast shown by api interceptor
     }
   }
 
@@ -53,8 +55,8 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
       if (response.status === 200 && response.data.count > 0) {
         setPaginatedExistingResumes(response.data);
       }
-    } catch (err) {
-      console.error("Error fetching resumes:", err);
+    } catch {
+      // Toast shown by api interceptor
     }
   }
 

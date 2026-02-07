@@ -41,9 +41,13 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
   });
 
   async function checkExistingJobs() {
-    const response = await api.get("/api/job/");
-    if (response.status === 200 && response.data.count > 0) {
-      setHasExistingJobs(true);
+    try {
+      const response = await api.get("/api/job/");
+      if (response.status === 200 && response.data.count > 0) {
+        setHasExistingJobs(true);
+      }
+    } catch {
+      // Toast shown by api interceptor
     }
   }
 
@@ -56,8 +60,8 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
       if (response.status === 200 && response.data.count > 0) {
         setPaginatedExistingJobs(response.data);
       }
-    } catch (error) {
-      console.error("Error checking existing jobs:", error);
+    } catch {
+      // Toast shown by api interceptor
     }
   }
 

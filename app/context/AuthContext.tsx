@@ -30,10 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserId(response.data.id || null);
       }
     } catch (err: any) {
-      console.log("Auth Context error:", err);
       setIsVerified(false);
       setUserEmail(null);
       setUserId(null);
+      // Don't show toast for auth errors - they're expected when not logged in
     }
   };
 

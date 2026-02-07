@@ -1,18 +1,8 @@
 import { api } from "@/app/api";
-import { Select, Button, TextInput, Textarea } from "flowbite-react";
+import { Select, Button } from "flowbite-react";
 import { useState, useEffect } from "react";
 import { AxiosResponse } from "axios";
-
-type DocumentDraftResponse = {
-  id: number;
-  markdown: string;
-  version_name: string;
-  document: {
-    id: number;
-    type: string;
-  };
-  created_at: string;
-};
+import DraftDisplay, { type DocumentDraftResponse, type DocumentDraftHistory } from "@/app/components/DraftDisplay";
 
 const blankDocumentDraftResponse: DocumentDraftResponse = {
   id: 0,
@@ -24,166 +14,6 @@ const blankDocumentDraftResponse: DocumentDraftResponse = {
   },
   created_at: "",
 };
-
-type DocumentDraftHistory = {
-  id: number;
-  version_name: string;
-  created_at: string;
-};
-
-// Extracted Components
-type HistoryDropdownProps = {
-  history: DocumentDraftHistory[];
-  currentDraftId: number;
-  onSelectVersion: (versionId: number) => void;
-};
-
-function HistoryDropdown({ history, currentDraftId, onSelectVersion }: HistoryDropdownProps) {
-  if (history.length <= 1) {
-    return null;
-  }
-
-  function handleSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    onSelectVersion(Number(e.target.value));
-  }
-
-  return (
-    <>
-      <label htmlFor="version-select" className="text-adaptive-label">
-        Drafts:
-      </label>
-      <Select id="version-select" value={currentDraftId} onChange={handleSelect}>
-        {history.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.version_name || `Draft ${item.id}`}
-          </option>
-        ))}
-      </Select>
-    </>
-  );
-}
-
-async function onDownload(draft: DocumentDraftResponse) {
-  console.log("Downloading draft:");
-  const requestBody: {
-    document_version_id: number;
-    file_name: string;
-    markdown: string;
-  } = {
-    document_version_id: draft.id,
-    file_name: draft.version_name,
-    markdown: draft.markdown,
-  };
-  try {
-    const response = await api.post(`api/download-content/`, requestBody);
-    responseErrorHandler(response);
-  } catch (error) {
-    console.error("Error downloading draft:", error);
-  }
-}
-
-type DraftDisplayProps = {
-  drafts: [DocumentDraftResponse, DocumentDraftHistory[]][];
-  showCustomPrompt: { [key: number]: boolean };
-  onToggleCustomPrompt: (draftId: number, show: boolean) => void;
-  onUpdateDraft: (draft: DocumentDraftResponse) => (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  onSelectVersion: (versionId: number) => void;
-  onDownload: (draft: DocumentDraftResponse, e: React.MouseEvent<HTMLButtonElement>) => Promise<void>;
-};
-
-function DraftDisplay({
-  drafts,
-  showCustomPrompt,
-  onToggleCustomPrompt,
-  onUpdateDraft,
-  onSelectVersion,
-  onDownload,
-}: DraftDisplayProps) {
-  const activeDrafts = drafts.filter((draft) => draft[0].id !== 0);
-
-  if (activeDrafts.length === 0) {
-    return null;
-  }
-
-  return (
-    <div>
-      {activeDrafts.map((draft, index) => {
-        const currentDraft = draft[0];
-        const currentDraftHistory = draft[1];
-
-        return (
-          <div key={currentDraft.id} className={index > 0 ? "mt-8 border-t border-gray-200 pt-6" : ""}>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <h3 className="text-lg font-semibold text-adaptive">{docTypeToText(currentDraft.document.type)}</h3>
-              <HistoryDropdown
-                history={currentDraftHistory}
-                currentDraftId={currentDraft.id}
-                onSelectVersion={onSelectVersion}
-              />
-            </div>
-            <form onSubmit={onUpdateDraft(currentDraft)}>
-              <div className="mb-3">
-                <label htmlFor={`version-name-${index}`} className="mb-1 block text-adaptive-label">
-                  Version Name (optional)
-                </label>
-                <Textarea
-                  id={`version-name-${index}`}
-                  name="draftName"
-                  placeholder="e.g. Final Draft, Tech Focus, Manager Position..."
-                  rows={1}
-                  defaultValue={currentDraft.version_name}
-                />
-              </div>
-              <label htmlFor={`markdown-${index}`} className="mb-1 block text-adaptive-label">
-                Content
-              </label>
-              <Textarea id={`markdown-${index}`} name="markdown" rows={8} defaultValue={currentDraft.markdown} />
-              {showCustomPrompt[currentDraft.id] ? (
-                <div className="mt-3">
-                  <label htmlFor={`instructions-${index}`} className="mb-1 block text-adaptive-label">
-                    Instructions (optional)
-                  </label>
-                  <Textarea
-                    id={`instructions-${index}`}
-                    name="instructions"
-                    placeholder="e.g. Make it more concise, emphasize leadership..."
-                    rows={3}
-                    className="mt-1"
-                  />
-                  <Button
-                    type="button"
-                    color="light"
-                    size="xs"
-                    className="mt-1"
-                    onClick={() => onToggleCustomPrompt(currentDraft.id, false)}
-                  >
-                    Remove instructions
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  color="light"
-                  size="xs"
-                  className="mt-3"
-                  onClick={() => onToggleCustomPrompt(currentDraft.id, true)}
-                >
-                  + Add instructions (optional)
-                </Button>
-              )}
-              <div className="mt-4 flex gap-3">
-                <Button type="submit">Update {docTypeToText(currentDraft.document.type)}</Button>
-                <Button type="button" color="gray" onClick={(e) => onDownload(currentDraft, e)}>
-                  Download PDF
-                </Button>
-              </div>
-            </form>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function GenerateDocuments({
   user_context_id,
@@ -204,35 +34,39 @@ export default function GenerateDocuments({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // async function getTestDrafts() {
-  //   const response = await api.get(`api/document-version/1/`);
-  //   responseErrorHandler(response);
-  //   const doc_draft = response.data as DocumentDraftResponse[];
-  //   console.log("!!!!!! doc_draft", doc_draft);
-  //   type DocumentDraftResponse = {
-  //     id: number;
-  //     markdown: string;
-  //     version_name: string;
-  //     document: {
-  //       id: number;
-  //       type: string;
-  //     };
-  //     created_at: string;
-  //   };
-  //   setResumeDraftResponse({
-  //     id: doc_draft.id,
-  //     markdown: doc_draft.markdown,
-  //     version_name: doc_draft.version_name,
-  //     document: {
-  //       id: doc_draft.document.id,
-  //       type: "resume",
-  //     },
-  //     created_at: doc_draft.created_at,
-  //   } as DocumentDraftResponse);
-  // }
-  // useEffect(() => {
-  //   getTestDrafts();
-  // }, []);
+  async function getTestDrafts() {
+    try {
+      const response = await api.get(`api/document-version/1/`);
+      responseErrorHandler(response);
+      const doc_draft = response.data;
+    console.log("!!!!!! doc_draft", doc_draft);
+    type DocumentDraftResponse = {
+      id: number;
+      markdown: string;
+      version_name: string;
+      document: {
+        id: number;
+        type: string;
+      };
+      created_at: string;
+    };
+    setResumeDraftResponse({
+      id: doc_draft.id,
+      markdown: doc_draft.markdown,
+      version_name: doc_draft.version_name,
+      document: {
+        id: doc_draft.document.id,
+        type: "resume",
+      },
+      created_at: doc_draft.created_at,
+    } as DocumentDraftResponse);
+    } catch {
+      // Toast shown by api interceptor
+    }
+  }
+  useEffect(() => {
+    getTestDrafts();
+  }, []);
 
   async function handleGenerateCommand(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -263,9 +97,8 @@ export default function GenerateDocuments({
         throw new Error("Expected " + expected_length + " documents, got " + doc_drafts.length);
       }
       handleNewDraft(doc_drafts);
-    } catch (error) {
-      console.error(error);
-      console.log("payload:", payload);
+    } catch {
+      // Toast shown by api interceptor
     } finally {
       setLoading(false);
     }
@@ -317,8 +150,8 @@ export default function GenerateDocuments({
         responseErrorHandler(response);
         const newDraft = arrayProof(response.data) as DocumentDraftResponse[];
         handleNewDraft(newDraft);
-      } catch (error) {
-        console.error("Error updating draft:", error);
+      } catch {
+        // Toast shown by api interceptor
       }
     };
   }
@@ -368,35 +201,33 @@ export default function GenerateDocuments({
       }
 
       // Download the PDF with proper blob response handling
-      const downloadResponse = await api.get(`/api/document-version/${finalDraftId}/pdf/`, { responseType: "blob" });
+      const downloadResponse = await api.get(`/api/document-version/${finalDraftId}/pdf/`, {
+        responseType: "blob",
+      });
 
-      // Create blob and trigger download
+      const contentDisposition = downloadResponse.headers["content-disposition"];
+      const filenameMatch =
+        typeof contentDisposition === "string" && contentDisposition.match(/filename="?([^";\n]+)"?/i);
+      const downloadFilename = filenameMatch
+        ? filenameMatch[1].trim().replace(/^"(.*)"$/, "$1")
+        : `${draft.version_name || docTypeToText(draft.document.type)}.pdf`;
+
       const blob = new Blob([downloadResponse.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${draft.version_name || docTypeToText(draft.document.type)}.pdf`;
+      link.download = downloadFilename;
       document.body.appendChild(link);
       link.click();
 
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
+    } catch {
+      // Toast shown by api interceptor
     }
   };
 
-  const handleSelectVersion = async (versionId: number) => {
-    try {
-      const response = await api.get(`api/document-version/${versionId}/`);
-      responseErrorHandler(response);
-      const newDraft = arrayProof(response.data) as DocumentDraftResponse[];
-      handleNewDraft(newDraft);
-    } catch (error) {
-      console.error("Error selecting version:", error);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -429,7 +260,7 @@ export default function GenerateDocuments({
           showCustomPrompt={showCustomPrompt}
           onToggleCustomPrompt={handleToggleCustomPrompt}
           onUpdateDraft={handleUpdateDraft}
-          onSelectVersion={handleSelectVersion}
+          onDraftChange={handleNewDraft}
           onDownload={handleDownload}
         />
       </div>

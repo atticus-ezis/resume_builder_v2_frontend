@@ -27,12 +27,8 @@ export default function Navbar() {
   const { userEmail } = useAuth();
 
   async function logoutHandler() {
-    try {
-      const response = await api.post("/api/accounts/logout/");
-      router.push("/");
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
+    await api.post("/api/accounts/logout/");
+    router.push("/");
   }
 
   return (

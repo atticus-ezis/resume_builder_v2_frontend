@@ -8,13 +8,8 @@ export default function Profile() {
   const { userId } = useAuth();
   const { userEmail } = useAuth();
   async function getProfile() {
-    try {
-      const response = await api.get(`/api/accounts/user?id=${userId}`);
-
-      console.log("RESPONSE DATA:", response.data);
-    } catch (error) {
-      console.error(error);
-    }
+    const response = await api.get(`/api/accounts/user?id=${userId}`);
+    console.log("RESPONSE DATA:", response.data);
   }
   useEffect(() => {
     getProfile();
