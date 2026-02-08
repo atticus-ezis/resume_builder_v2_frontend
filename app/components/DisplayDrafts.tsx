@@ -37,7 +37,10 @@ export default function DisplayDrafts({
   }, [displayResumeDraft, displayCoverLetterDraft]);
 
   // Shared: patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
-  async function patchDraftIfFormChanged(draft: DraftResponse, form: HTMLFormElement | null): Promise<number> {
+  async function patchDraftIfFormChanged(
+    draft: DraftResponse,
+    form: HTMLFormElement | null,
+  ): Promise<number | undefined> {
     if (!form) return draft.id;
     const formData = new FormData(form);
     const currentName = formData.get("draftName") as string;
@@ -48,9 +51,13 @@ export default function DisplayDrafts({
     const patchPayload: Record<string, string> = {};
     if (currentName) patchPayload.version_name = currentName;
     if (markdownChanged) patchPayload.markdown = currentMarkdown;
-    const updateResponse = await api.patch(`api/document-version/${draft.id}/`, patchPayload);
-    const updateData = updateResponse.data as DraftResponse;
-    return updateData?.id ?? draft.id;
+    try {
+      const updateResponse = await api.patch(`api/document-version/${draft.id}/`, patchPayload);
+      const updateData = updateResponse.data as DraftResponse;
+      return updateData?.id ?? draft.id;
+    } catch {
+      // Toast shown by api interceptor
+    }
   }
 
   // 2 set on History Select — patch current draft if form has changes, then load selected version
@@ -96,29 +103,20 @@ export default function DisplayDrafts({
     return async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const formData = new FormData(e.currentTarget);
-      const version_name =
-        formData && draft.version_name !== formData.get("draftName") ? (formData.get("draftName") as string) : null;
-      const markdown =
-        formData && draft.markdown !== formData.get("markdown") ? (formData.get("markdown") as string) : null;
       const instructions = formData ? (formData.get("instructions") as string) || null : null;
-
-      if (!version_name && !markdown && !instructions) {
-        setError("No changes made");
+      if (!instructions) {
+        setError("No instructions provided");
         return;
       }
-
-      const payload: Record<string, unknown> = {
-        document_version_id: draft.id,
-      };
-      if (version_name) payload.version_name = version_name;
-      if (markdown) payload.markdown = markdown;
-      if (instructions) payload.instructions = instructions;
+      const newDraftId = await patchDraftIfFormChanged(draft, e.currentTarget);
 
       try {
         setError(null);
-        const response = await api.post("api/update-content/", payload);
-        const newDraft = response.data as DraftResponse;
-        setDisplayDrafts(newDraft);
+        const response = await api.post("api/update-content/", {
+          document_version_id: newDraftId,
+        });
+        const updatedDraft = response.data as DraftResponse;
+        setDisplayDrafts(updatedDraft);
       } catch {
         // Toast shown by api interceptor
       }
