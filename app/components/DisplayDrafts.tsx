@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import { docTypeToText } from "@/app/utils/DocTypeToText";
 import { DateFormatter } from "@/app/utils/DateFormatter";
-import { Button, Select, Textarea } from "flowbite-react";
+import { Button, Select, Textarea, Spinner } from "flowbite-react";
 
 export default function DisplayDrafts({
   displayResumeDraft,
@@ -24,19 +24,21 @@ export default function DisplayDrafts({
   resumeDocumentId: number | null;
   coverLetterDocumentId: number | null;
 }) {
+  const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
   const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DraftHistory[]>([]);
-  const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (resumeDocumentId || coverLetterDocumentId) {
-      populateHistory();
-    }
-  }, [displayResumeDraft, displayCoverLetterDraft]);
+  const draftsWithHistory: { draft: DraftResponse; draftHistory: DraftHistory[] }[] = [];
+  if (displayResumeDraft) {
+    draftsWithHistory.push({ draft: displayResumeDraft, draftHistory: resumeDraftHistory });
+  }
+  if (displayCoverLetterDraft) {
+    draftsWithHistory.push({ draft: displayCoverLetterDraft, draftHistory: coverLetterDraftHistory });
+  }
 
-  // Shared: patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
+  // patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
   async function patchDraftIfFormChanged(
     draft: DraftResponse,
     form: HTMLFormElement | null,
@@ -61,12 +63,12 @@ export default function DisplayDrafts({
   }
 
   // 2 set on History Select — patch current draft if form has changes, then load selected version
-  async function onHistorySelect(versionId: number, currentDraft: DraftResponse, form: HTMLFormElement | null) {
+  async function onHistorySelect(currentDraft: DraftResponse, form: HTMLFormElement | null) {
     setLoading(true);
     setError(null);
     try {
-      await patchDraftIfFormChanged(currentDraft, form);
-      const response = await api.get(`api/document-version/?document=${versionId}/`);
+      const draftId = await patchDraftIfFormChanged(currentDraft, form);
+      const response = await api.get(`api/document-version/?document=${draftId}/`);
       const draft = response.data as DraftResponse;
       setDisplayDrafts(draft);
     } catch {
@@ -77,28 +79,26 @@ export default function DisplayDrafts({
   }
 
   // 3 set populateHistory
-  async function populateHistory() {
-    if (resumeDocumentId) {
-      const response = await api.get(`api/document-version-history/document?=${resumeDocumentId}/`);
-      const draft_histories = response.data as DraftHistory[];
-      for (const draft_history of draft_histories) {
-        if (draft_history.document_type === "resume") {
-          setResumeDraftHistory([...resumeDraftHistory, draft_history]);
-        }
-      }
-    }
-    if (coverLetterDocumentId) {
-      const response = await api.get(`api/document-version-history/document?=${coverLetterDocumentId}/`);
-      const draft_histories = response.data as DraftHistory[];
-      for (const draft_history of draft_histories) {
-        if (draft_history.document_type === "cover_letter") {
-          setCoverLetterDraftHistory([...coverLetterDraftHistory, draft_history]);
-        }
-      }
+  // async function populateHistory() {
+  //   for (const draft of draftsToShow) {
+  //     setDraftHistory(draft);
+  //   }
+  // }
+
+  // returns and resets current document version history
+  async function setDraftHistory(draft: DraftResponse) {
+    const documentId = draft.document.id;
+    const documentType = draft.document.type;
+    const response = await api.get(`api/document-version-history/document?=${documentId}/`);
+    const draft_histories = response.data as DraftHistory[];
+    if (documentType === "resume") {
+      setResumeDraftHistory(draft_histories);
+    } else if (documentType === "cover_letter") {
+      setCoverLetterDraftHistory(draft_histories);
     }
   }
 
-  // takes changes from instructions + (title + content) and sets new Draft
+  // returns new doc version and updates history and draft display
   function handleUpdateDraft(draft: DraftResponse) {
     return async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -108,22 +108,26 @@ export default function DisplayDrafts({
         setError("No instructions provided");
         return;
       }
-      const newDraftId = await patchDraftIfFormChanged(draft, e.currentTarget);
-
+      setLoading(true);
+      setError(null);
       try {
-        setError(null);
+        const newDraftId = await patchDraftIfFormChanged(draft, e.currentTarget);
         const response = await api.post("api/update-content/", {
           document_version_id: newDraftId,
         });
         const updatedDraft = response.data as DraftResponse;
         setDisplayDrafts(updatedDraft);
+        setDraftHistory(updatedDraft);
       } catch {
         // Toast shown by api interceptor
+      } finally {
+        setLoading(false);
       }
     };
   }
 
   const handleDownload = async (draft: DraftResponse, form: HTMLFormElement | null) => {
+    setLoading(true);
     try {
       const draftIdForPdf = await patchDraftIfFormChanged(draft, form);
 
@@ -148,35 +152,45 @@ export default function DisplayDrafts({
       window.URL.revokeObjectURL(url);
     } catch {
       // Toast shown by api interceptor
+    } finally {
+      setLoading(false);
     }
   };
 
-  const draftsToShow: { draft: DraftResponse; history: DraftHistory[] }[] = [];
-  if (displayResumeDraft) {
-    draftsToShow.push({ draft: displayResumeDraft, history: resumeDraftHistory });
-  }
-  if (displayCoverLetterDraft) {
-    draftsToShow.push({ draft: displayCoverLetterDraft, history: coverLetterDraftHistory });
-  }
+  // const draftsToShow: { draft: DraftResponse; history: DraftHistory[] }[] = [];
+  // if (displayResumeDraft) {
+  //   draftsToShow.push({ draft: displayResumeDraft, history: resumeDraftHistory });
+  // }
+  // if (displayCoverLetterDraft) {
+  //   draftsToShow.push({ draft: displayCoverLetterDraft, history: coverLetterDraftHistory });
+  // }
 
-  if (draftsToShow.length === 0) {
-    return null;
-  }
+  // if (draftsToShow.length === 0) {
+  //   return null;
+  // }
 
   return (
-    <div className="space-y-8">
+    <div className="relative space-y-8">
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gray-100/80 dark:bg-gray-900/80">
+          <Spinner size="xl" />
+        </div>
+      )}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
-      {draftsToShow.map(({ draft, history }, index) => (
-        <div key={draft.id} className={index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""}>
+      {draftsWithHistory.map(({ draft, draftHistory }, index) => (
+        <div
+          key={draft.id}
+          className={`relative ${index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""} ${loading ? "pointer-events-none opacity-70" : ""}`}
+        >
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {docTypeToText(draft.document.type)}
             </h3>
-            {history.length > 0 && (
+            {draftHistory.length > 0 && (
               <>
                 <label htmlFor={`version-select-${draft.id}`} className="text-sm text-gray-600 dark:text-gray-400">
                   Version:
@@ -184,15 +198,15 @@ export default function DisplayDrafts({
                 <Select
                   id={`version-select-${draft.id}`}
                   value={draft.id}
-                  onChange={(e) => {
-                    const form = e.currentTarget.closest("div")?.nextElementSibling;
-                    onHistorySelect(Number(e.target.value), draft, form instanceof HTMLFormElement ? form : null);
+                  onChange={() => {
+                    const form = document.getElementById(`draft-form-${draft.id}`);
+                    onHistorySelect(draft, form instanceof HTMLFormElement ? form : null);
                   }}
                   sizing="sm"
                 >
-                  {history.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.version_name || `Version ${item.id}`} — {DateFormatter(item.updated_at)}
+                  {draftHistory.map((pastDraft: DraftHistory) => (
+                    <option key={pastDraft.id} value={pastDraft.id}>
+                      {pastDraft.version_name || `Version ${pastDraft.id}`} — {DateFormatter(pastDraft.updated_at)}
                     </option>
                   ))}
                 </Select>
@@ -200,7 +214,7 @@ export default function DisplayDrafts({
             )}
           </div>
 
-          <form onSubmit={handleUpdateDraft(draft)}>
+          <form id={`draft-form-${draft.id}`} onSubmit={handleUpdateDraft(draft)}>
             <div className="mb-3">
               <label
                 htmlFor={`draftName-${draft.id}`}

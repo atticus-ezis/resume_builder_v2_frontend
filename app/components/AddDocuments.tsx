@@ -107,8 +107,6 @@ export default function GenerateDocuments({
   }
   const [displayResumeDraft, setDisplayResumeDraft] = useState<DraftResponse | null>(null);
   const [displayCoverLetterDraft, setDisplayCoverLetterDraft] = useState<DraftResponse | null>(null);
-  const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
-  const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DraftHistory[]>([]);
   const [resumeDocumentId, setResumeDocumentId] = useState<number | null>(null);
   const [coverLetterDocumentId, setCoverLetterDocumentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
