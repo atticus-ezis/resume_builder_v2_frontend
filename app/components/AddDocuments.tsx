@@ -65,7 +65,7 @@
 
 import { api } from "@/app/api";
 import { Button } from "flowbite-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select } from "flowbite-react";
 import DisplayDrafts from "./DisplayDrafts";
 
@@ -84,7 +84,6 @@ export type DraftHistory = {
   id: number;
   version_name: string;
   updated_at: string;
-  document_type: string;
 };
 
 // 1 generateDocuments
@@ -97,24 +96,38 @@ export default function GenerateDocuments({
   job_description_id: number;
   onMissingSelection?: (missing: "job" | "resume") => void;
 }) {
-  if (!job_description_id) {
-    onMissingSelection?.("job");
-    return;
-  }
-  if (!user_context_id) {
-    onMissingSelection?.("resume");
-    return;
-  }
   const [displayResumeDraft, setDisplayResumeDraft] = useState<DraftResponse | null>(null);
   const [displayCoverLetterDraft, setDisplayCoverLetterDraft] = useState<DraftResponse | null>(null);
-  const [resumeDocumentId, setResumeDocumentId] = useState<number | null>(null);
-  const [coverLetterDocumentId, setCoverLetterDocumentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function testingDrafts(boolean: boolean) {
+    if (boolean) {
+      setDisplayResumeDraft({
+        id: 1,
+        markdown: "test",
+        version_name: "test version",
+        document: { id: 1, type: "resume" },
+        updated_at: "2026-02-09T12:00:00Z",
+      });
+    }
+  }
+
+  useEffect(() => {
+    testingDrafts(true);
+  }, []);
 
   // 1 set on Generate
   async function createDrafts(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!job_description_id) {
+      onMissingSelection?.("job");
+      return;
+    }
+    if (!user_context_id) {
+      onMissingSelection?.("resume");
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const command = (formData.get("command") as string) || "generate_resume";
     const commandNormalized = command.toLowerCase();
@@ -131,10 +144,8 @@ export default function GenerateDocuments({
       for (const draft of draft_responses) {
         if (draft.document.type === "resume") {
           setDisplayResumeDraft(draft);
-          setResumeDocumentId(draft.document.id);
         } else if (draft.document.type === "cover_letter") {
           setDisplayCoverLetterDraft(draft);
-          setCoverLetterDocumentId(draft.document.id);
         }
       }
     } catch {
@@ -180,8 +191,6 @@ export default function GenerateDocuments({
             displayResumeDraft={displayResumeDraft}
             displayCoverLetterDraft={displayCoverLetterDraft}
             setDisplayDrafts={setDisplayDrafts}
-            resumeDocumentId={resumeDocumentId}
-            coverLetterDocumentId={coverLetterDocumentId}
           />
         </div>
       )}

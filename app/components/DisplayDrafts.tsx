@@ -15,14 +15,10 @@ export default function DisplayDrafts({
   displayResumeDraft,
   displayCoverLetterDraft,
   setDisplayDrafts,
-  resumeDocumentId,
-  coverLetterDocumentId,
 }: {
   displayResumeDraft: DraftResponse | null;
   displayCoverLetterDraft: DraftResponse | null;
   setDisplayDrafts: (draft: DraftResponse) => void;
-  resumeDocumentId: number | null;
-  coverLetterDocumentId: number | null;
 }) {
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
@@ -38,6 +34,42 @@ export default function DisplayDrafts({
     draftsWithHistory.push({ draft: displayCoverLetterDraft, draftHistory: coverLetterDraftHistory });
   }
 
+  function testingDrafts(boolean: boolean) {
+    if (boolean) {
+      setDisplayDrafts({
+        id: 3,
+        markdown: "test",
+        version_name: "test version",
+        document: { id: 1, type: "resume" },
+        updated_at: "2026-02-09T12:00:00Z",
+      });
+      setDisplayDrafts({
+        id: 4,
+        markdown: "this is a cover letter",
+        version_name: "test jkflahskjfglkas",
+        document: { id: 1, type: "cover_letter" },
+        updated_at: "2026-02-09T12:08:23Z",
+      });
+    }
+  }
+
+  function testingHistory(boolean: boolean) {
+    if (boolean) {
+      setDraftHistory({
+        id: 2,
+        version_name: "test version",
+        markdown: "test",
+        document: { id: 1, type: "resume" },
+        updated_at: "2026-02-09T12:00:00Z",
+      });
+    }
+  }
+
+  useEffect(() => {
+    testingDrafts(true);
+    testingHistory(true);
+  }, []);
+
   // patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
   async function patchDraftIfFormChanged(
     draft: DraftResponse,
@@ -51,26 +83,31 @@ export default function DisplayDrafts({
     const versionNameChanged = draft.version_name !== currentName;
     if (!markdownChanged && !versionNameChanged) return draft.id;
     const patchPayload: Record<string, string> = {};
-    if (currentName) patchPayload.version_name = currentName;
+    if (versionNameChanged) patchPayload.version_name = currentName;
     if (markdownChanged) patchPayload.markdown = currentMarkdown;
     try {
+      console.log(`!!!PATCH Draft Function payload: ${patchPayload} `);
       const updateResponse = await api.patch(`api/document-version/${draft.id}/`, patchPayload);
+      console.log(`!!!PATCH Draft Function response: ${updateResponse.status}, ${updateResponse.data} `);
       const updateData = updateResponse.data as DraftResponse;
+      console.log(`!!!PATCH Draft Function return: ${updateData?.id ?? draft.id} `);
       return updateData?.id ?? draft.id;
     } catch {
       // Toast shown by api interceptor
     }
   }
 
-  // 2 set on History Select — patch current draft if form has changes, then load selected version
-  async function onHistorySelect(currentDraft: DraftResponse, form: HTMLFormElement | null) {
+  // 2 set on History Select — load selected version
+  async function onHistorySelect(currentDraft: DraftResponse, selectedVersionId: string) {
     setLoading(true);
     setError(null);
     try {
-      const draftId = await patchDraftIfFormChanged(currentDraft, form);
-      const response = await api.get(`api/document-version/?document=${draftId}/`);
-      const draft = response.data as DraftResponse;
-      setDisplayDrafts(draft);
+      const versionId = selectedVersionId || null;
+      if (versionId) {
+        const response = await api.get(`api/document-version/${versionId}/`);
+        const draft = response.data as DraftResponse;
+        setDisplayDrafts(draft);
+      }
     } catch {
       // Toast shown by api interceptor
     } finally {
@@ -89,7 +126,8 @@ export default function DisplayDrafts({
   async function setDraftHistory(draft: DraftResponse) {
     const documentId = draft.document.id;
     const documentType = draft.document.type;
-    const response = await api.get(`api/document-version-history/document?=${documentId}/`);
+    const response = await api.get(`api/document-version-history/?document=${documentId}`);
+    console.log(`!!!SET DRAFT HISTORY Function response: ${response.status}, ${response.data} `);
     const draft_histories = response.data as DraftHistory[];
     if (documentType === "resume") {
       setResumeDraftHistory(draft_histories);
@@ -112,9 +150,13 @@ export default function DisplayDrafts({
       setError(null);
       try {
         const newDraftId = await patchDraftIfFormChanged(draft, e.currentTarget);
-        const response = await api.post("api/update-content/", {
+        const payload = {
           document_version_id: newDraftId,
-        });
+          instructions: instructions,
+        };
+        console.log(`!!!UPDATE DRAFT Function payload: ${payload} `);
+        const response = await api.post("api/update-content/", payload);
+        console.log(`!!!UPDATE DRAFT Function response: ${response.status}, ${response.data} `);
         const updatedDraft = response.data as DraftResponse;
         setDisplayDrafts(updatedDraft);
         setDraftHistory(updatedDraft);
@@ -134,6 +176,7 @@ export default function DisplayDrafts({
       const downloadResponse = await api.get(`/api/document-version/${draftIdForPdf}/pdf/`, {
         responseType: "blob",
       });
+      console.log(`!!!DOWNLOAD Function response: ${downloadResponse.status}, ${downloadResponse.data} `);
       const contentDisposition = downloadResponse.headers["content-disposition"];
       const filenameMatch =
         typeof contentDisposition === "string" && contentDisposition.match(/filename="?([^";\n]+)"?/i);
@@ -150,6 +193,7 @@ export default function DisplayDrafts({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      setDraftHistory(draft);
     } catch {
       // Toast shown by api interceptor
     } finally {
@@ -197,10 +241,11 @@ export default function DisplayDrafts({
                 </label>
                 <Select
                   id={`version-select-${draft.id}`}
+                  name="version-select"
                   value={draft.id}
-                  onChange={() => {
-                    const form = document.getElementById(`draft-form-${draft.id}`);
-                    onHistorySelect(draft, form instanceof HTMLFormElement ? form : null);
+                  onChange={(e) => {
+                    console.log(`selected version id: ${e.target.value}`);
+                    onHistorySelect(draft, e.target.value);
                   }}
                   sizing="sm"
                 >

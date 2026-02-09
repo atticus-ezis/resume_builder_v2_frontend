@@ -4,7 +4,7 @@ import { Card } from "flowbite-react";
 import { useState, useRef, useCallback } from "react";
 import AddJob from "@/app/components/AddJob";
 import AddResume from "@/app/components/AddResume";
-import GenerateDocuments from "@/app/components/GenerateDocuments";
+import GenerateDocuments from "@/app/components/AddDocuments";
 
 type Job = {
   id: number;
