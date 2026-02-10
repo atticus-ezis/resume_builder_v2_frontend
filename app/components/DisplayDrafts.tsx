@@ -21,7 +21,7 @@ export default function DisplayDrafts({
   displayResumeDraft: DraftResponse | null;
   displayCoverLetterDraft: DraftResponse | null;
   setDisplayDrafts: (draft: DraftResponse) => void;
-  generateMessages?: Partial<Record<DocumentType, string>>;
+  generateMessages?: Partial<Record<number, string>>;
   onRegenerate?: (docType: DocumentType) => void;
 }) {
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
@@ -38,8 +38,11 @@ export default function DisplayDrafts({
     draftsWithHistory.push({ draft: displayCoverLetterDraft, draftHistory: coverLetterDraftHistory });
   }
 
-  console.log(`!!!DISPLAY DRAFTS Function draftsWithHistory: ${draftsWithHistory} `);
-  console.log(`!!!! current displayResumeDraft: ${displayResumeDraft?.markdown}, ${displayResumeDraft?.version_name} `);
+  // Refresh history whenever displayed drafts change (e.g. after generate or re-generate)
+  useEffect(() => {
+    if (displayResumeDraft) setDraftHistory(displayResumeDraft);
+    if (displayCoverLetterDraft) setDraftHistory(displayCoverLetterDraft);
+  }, [displayResumeDraft?.id, displayCoverLetterDraft?.id]);
 
   // function testingDrafts(boolean: boolean) {
   //   if (boolean) {
@@ -159,7 +162,6 @@ export default function DisplayDrafts({
         console.log(`!!!UPDATE DRAFT Function response: ${response.status}, ${response.data} `);
         const updatedDraft = response.data as DraftResponse;
         setDisplayDrafts(updatedDraft);
-        setDraftHistory(updatedDraft);
       } catch {
         // Toast shown by api interceptor
       } finally {
@@ -193,7 +195,6 @@ export default function DisplayDrafts({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      setDraftHistory(draft);
     } catch {
       // Toast shown by api interceptor
     } finally {
@@ -218,20 +219,20 @@ export default function DisplayDrafts({
           key={draft.id}
           className={`relative ${index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""} ${loading ? "pointer-events-none opacity-70" : ""}`}
         >
-          {generateMessages?.[draft.document.type] && (
+          {generateMessages?.[draft.id] && (
             <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                {generateMessages[draft.document.type]}
+                {generateMessages[draft.id]}
                 {onRegenerate &&
-                  generateMessages[draft.document.type]?.toLowerCase().includes("returned existing document") && (
+                  generateMessages[draft.id]?.toLowerCase().includes("found an existing document") && (
                     <>
                       {" "}
                       <button
                         type="button"
                         className="font-medium underline underline-offset-2"
-                        onClick={() => onRegenerate(draft.document.type)}
+                        onClick={() => onRegenerate?.(draft.document.type)}
                       >
-                        re-generate
+                        Regenerate
                       </button>
                     </>
                   )}

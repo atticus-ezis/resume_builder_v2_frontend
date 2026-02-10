@@ -114,7 +114,7 @@ export default function GenerateDocuments({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastGenerateRequest, setLastGenerateRequest] = useState<generateRequest>();
-  const [generateMessages, setGenerateMessages] = useState<Partial<Record<DocumentType, string>>>({});
+  const [generateMessages, setGenerateMessages] = useState<Partial<Record<number, string>>>({});
 
   // backend now returns on generate
   // {
@@ -153,7 +153,7 @@ export default function GenerateDocuments({
       for (const item of draft_responses) {
         const documentVersion = item.document_version;
         if (item.message) {
-          setGenerateMessages((prev) => ({ ...prev, [documentVersion.document.type]: item.message! }));
+          setGenerateMessages((prev) => ({ ...prev, [documentVersion.id]: item.message! }));
         }
         if (documentVersion.document.type === "resume") {
           setDisplayResumeDraft(documentVersion);
