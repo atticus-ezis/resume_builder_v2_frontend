@@ -69,13 +69,15 @@ import { useState, useEffect } from "react";
 import { Select } from "flowbite-react";
 import DisplayDrafts from "./DisplayDrafts";
 
+export type DocumentType = "resume" | "cover_letter";
+
 export type DraftResponse = {
   id: number;
   markdown: string;
   version_name: string;
   document: {
     id: number;
-    type: string;
+    type: DocumentType;
   };
   updated_at: string;
 };
@@ -84,6 +86,17 @@ export type DraftHistory = {
   id: number;
   version_name: string;
   updated_at: string;
+};
+
+type GenerateDocumentsResponseItem = {
+  document_version: DraftResponse;
+  message?: string | null;
+};
+
+type generateRequest = {
+  user_context_id: number;
+  job_description_id: number;
+  command: string;
 };
 
 // 1 generateDocuments
@@ -100,24 +113,62 @@ export default function GenerateDocuments({
   const [displayCoverLetterDraft, setDisplayCoverLetterDraft] = useState<DraftResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastGenerateRequest, setLastGenerateRequest] = useState<generateRequest>();
+  const [generateMessages, setGenerateMessages] = useState<Partial<Record<DocumentType, string>>>({});
 
-  function testingDrafts(boolean: boolean) {
-    if (boolean) {
-      setDisplayResumeDraft({
-        id: 1,
-        markdown: "test",
-        version_name: "test version",
-        document: { id: 1, type: "resume" },
-        updated_at: "2026-02-09T12:00:00Z",
-      });
+  // backend now returns on generate
+  // {
+  //   "document_version": { "id": 1, "markdown": "...", "document": { "id": 1, "type": "resume" } },
+  //   "message": "returned existing document"
+  // }
+
+  async function runGenerate({ command, regenerateVersion = false }: { command: string; regenerateVersion?: boolean }) {
+    setLoading(true);
+    setError(null);
+    setGenerateMessages({});
+
+    const baseRequest: generateRequest = {
+      job_description_id,
+      user_context_id,
+      command,
+    };
+    const payload = {
+      ...baseRequest,
+      ...(regenerateVersion && { regenerate_version: true }),
+    };
+
+    if (
+      !regenerateVersion &&
+      lastGenerateRequest &&
+      JSON.stringify(lastGenerateRequest) === JSON.stringify(baseRequest)
+    ) {
+      setLoading(false);
+      setError("Document has already been generated");
+      return;
+    }
+
+    try {
+      const response = await api.post(`api/generate-resume-and-cover-letter/`, payload);
+      const draft_responses = response.data as GenerateDocumentsResponseItem[];
+      for (const item of draft_responses) {
+        const documentVersion = item.document_version;
+        if (item.message) {
+          setGenerateMessages((prev) => ({ ...prev, [documentVersion.document.type]: item.message! }));
+        }
+        if (documentVersion.document.type === "resume") {
+          setDisplayResumeDraft(documentVersion);
+        } else if (documentVersion.document.type === "cover_letter") {
+          setDisplayCoverLetterDraft(documentVersion);
+        }
+      }
+      setLastGenerateRequest(baseRequest);
+    } catch {
+      // Toast shown by api interceptor
+    } finally {
+      setLoading(false);
     }
   }
 
-  useEffect(() => {
-    testingDrafts(true);
-  }, []);
-
-  // 1 set on Generate
   async function createDrafts(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!job_description_id) {
@@ -130,29 +181,12 @@ export default function GenerateDocuments({
     }
     const formData = new FormData(e.currentTarget);
     const command = (formData.get("command") as string) || "generate_resume";
-    const commandNormalized = command.toLowerCase();
-    setLoading(true);
-    setError(null);
-    const payload = {
-      job_description_id,
-      user_context_id,
-      command: commandNormalized,
-    };
-    try {
-      const response = await api.post(`api/generate-resume-and-cover-letter/`, payload);
-      const draft_responses = response.data as DraftResponse[];
-      for (const draft of draft_responses) {
-        if (draft.document.type === "resume") {
-          setDisplayResumeDraft(draft);
-        } else if (draft.document.type === "cover_letter") {
-          setDisplayCoverLetterDraft(draft);
-        }
-      }
-    } catch {
-      // Toast shown by api interceptor
-    } finally {
-      setLoading(false);
-    }
+    await runGenerate({ command });
+  }
+
+  function handleRegenerate(documentType: DocumentType) {
+    const command = documentType === "resume" ? "generate_resume" : "generate_cover_letter";
+    runGenerate({ command, regenerateVersion: true });
   }
 
   const setDisplayDrafts = (draft: DraftResponse) => {
@@ -191,6 +225,8 @@ export default function GenerateDocuments({
             displayResumeDraft={displayResumeDraft}
             displayCoverLetterDraft={displayCoverLetterDraft}
             setDisplayDrafts={setDisplayDrafts}
+            generateMessages={generateMessages}
+            onRegenerate={handleRegenerate}
           />
         </div>
       )}

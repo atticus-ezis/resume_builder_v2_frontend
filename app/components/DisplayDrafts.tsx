@@ -4,7 +4,7 @@
 // 3) send api.post("api/update-content/", payload);
 // 4) set new displayResumeDraft or displayCoverLetterDraft
 
-import { DraftResponse, DraftHistory } from "./AddDocuments";
+import { DraftResponse, DraftHistory, DocumentType } from "./AddDocuments";
 import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import { docTypeToText } from "@/app/utils/DocTypeToText";
@@ -15,10 +15,14 @@ export default function DisplayDrafts({
   displayResumeDraft,
   displayCoverLetterDraft,
   setDisplayDrafts,
+  generateMessages,
+  onRegenerate,
 }: {
   displayResumeDraft: DraftResponse | null;
   displayCoverLetterDraft: DraftResponse | null;
   setDisplayDrafts: (draft: DraftResponse) => void;
+  generateMessages?: Partial<Record<DocumentType, string>>;
+  onRegenerate?: (docType: DocumentType) => void;
 }) {
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
@@ -34,41 +38,44 @@ export default function DisplayDrafts({
     draftsWithHistory.push({ draft: displayCoverLetterDraft, draftHistory: coverLetterDraftHistory });
   }
 
-  function testingDrafts(boolean: boolean) {
-    if (boolean) {
-      setDisplayDrafts({
-        id: 3,
-        markdown: "test",
-        version_name: "test version",
-        document: { id: 1, type: "resume" },
-        updated_at: "2026-02-09T12:00:00Z",
-      });
-      setDisplayDrafts({
-        id: 4,
-        markdown: "this is a cover letter",
-        version_name: "test jkflahskjfglkas",
-        document: { id: 1, type: "cover_letter" },
-        updated_at: "2026-02-09T12:08:23Z",
-      });
-    }
-  }
+  console.log(`!!!DISPLAY DRAFTS Function draftsWithHistory: ${draftsWithHistory} `);
+  console.log(`!!!! current displayResumeDraft: ${displayResumeDraft?.markdown}, ${displayResumeDraft?.version_name} `);
 
-  function testingHistory(boolean: boolean) {
-    if (boolean) {
-      setDraftHistory({
-        id: 2,
-        version_name: "test version",
-        markdown: "test",
-        document: { id: 1, type: "resume" },
-        updated_at: "2026-02-09T12:00:00Z",
-      });
-    }
-  }
+  // function testingDrafts(boolean: boolean) {
+  //   if (boolean) {
+  //     setDisplayDrafts({
+  //       id: 3,
+  //       markdown: "test",
+  //       version_name: "test version",
+  //       document: { id: 1, type: "resume" },
+  //       updated_at: "2026-02-09T12:00:00Z",
+  //     });
+  //     setDisplayDrafts({
+  //       id: 4,
+  //       markdown: "this is a cover letter",
+  //       version_name: "test jkflahskjfglkas",
+  //       document: { id: 1, type: "cover_letter" },
+  //       updated_at: "2026-02-09T12:08:23Z",
+  //     });
+  //   }
+  // }
 
-  useEffect(() => {
-    testingDrafts(true);
-    testingHistory(true);
-  }, []);
+  // function testingHistory(boolean: boolean) {
+  //   if (boolean) {
+  //     setDraftHistory({
+  //       id: 2,
+  //       version_name: "test version",
+  //       markdown: "test",
+  //       document: { id: 1, type: "resume" },
+  //       updated_at: "2026-02-09T12:00:00Z",
+  //     });
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   testingDrafts(true);
+  //   testingHistory(true);
+  // }, []);
 
   // patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
   async function patchDraftIfFormChanged(
@@ -114,13 +121,6 @@ export default function DisplayDrafts({
       setLoading(false);
     }
   }
-
-  // 3 set populateHistory
-  // async function populateHistory() {
-  //   for (const draft of draftsToShow) {
-  //     setDraftHistory(draft);
-  //   }
-  // }
 
   // returns and resets current document version history
   async function setDraftHistory(draft: DraftResponse) {
@@ -201,18 +201,6 @@ export default function DisplayDrafts({
     }
   };
 
-  // const draftsToShow: { draft: DraftResponse; history: DraftHistory[] }[] = [];
-  // if (displayResumeDraft) {
-  //   draftsToShow.push({ draft: displayResumeDraft, history: resumeDraftHistory });
-  // }
-  // if (displayCoverLetterDraft) {
-  //   draftsToShow.push({ draft: displayCoverLetterDraft, history: coverLetterDraftHistory });
-  // }
-
-  // if (draftsToShow.length === 0) {
-  //   return null;
-  // }
-
   return (
     <div className="relative space-y-8">
       {loading && (
@@ -230,6 +218,26 @@ export default function DisplayDrafts({
           key={draft.id}
           className={`relative ${index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""} ${loading ? "pointer-events-none opacity-70" : ""}`}
         >
+          {generateMessages?.[draft.document.type] && (
+            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                {generateMessages[draft.document.type]}
+                {onRegenerate &&
+                  generateMessages[draft.document.type]?.toLowerCase().includes("returned existing document") && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        className="font-medium underline underline-offset-2"
+                        onClick={() => onRegenerate(draft.document.type)}
+                      >
+                        re-generate
+                      </button>
+                    </>
+                  )}
+              </p>
+            </div>
+          )}
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {docTypeToText(draft.document.type)}
