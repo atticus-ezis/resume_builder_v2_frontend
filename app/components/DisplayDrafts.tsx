@@ -104,6 +104,7 @@ export default function DisplayDrafts({
       console.log("!!!PATCH Draft Function response: ", JSON.stringify(updateResponse.data, null, 2));
       const updateData = updateResponse.data as DraftResponse;
       console.log("!!!PATCH Draft Function return: ", updateData?.id ?? draft.id);
+      setDisplayDrafts(updateData); // try this?
       return updateData?.id ?? draft.id;
     } catch {
       // Toast shown by api interceptor
@@ -149,7 +150,7 @@ export default function DisplayDrafts({
       const formData = new FormData(e.currentTarget);
       const instructions = formData ? (formData.get("instructions") as string) || null : null;
       if (!instructions) {
-        setError("No instructions provided");
+        setError("You must add instructions to update. Otherwise press 'Downnload'");
         return;
       }
       setLoadingDraftId(draft.id);
@@ -179,17 +180,20 @@ export default function DisplayDrafts({
     setLoadingDraftId(draft.id);
     try {
       const draftIdForPdf = await patchDraftIfFormChanged(draft, form);
+      const versionNameForFile = form
+        ? (new FormData(form).get("draftName") as string)?.trim() || draft.version_name
+        : draft.version_name;
 
       const downloadResponse = await api.get(`/api/document-version/${draftIdForPdf}/pdf/`, {
         responseType: "blob",
       });
-      console.log(`!!!DOWNLOAD Function response: ${downloadResponse.status}, ${downloadResponse.data} `);
+      console.log("!!!DOWNLOAD Function response: ", downloadResponse.status, downloadResponse.data);
       const contentDisposition = downloadResponse.headers["content-disposition"];
       const filenameMatch =
         typeof contentDisposition === "string" && contentDisposition.match(/filename="?([^";\n]+)"?/i);
       const downloadFilename = filenameMatch
         ? filenameMatch[1].trim().replace(/^"(.*)"$/, "$1")
-        : `${draft.version_name || docTypeToText(draft.document.type)}.pdf`;
+        : `${versionNameForFile || docTypeToText(draft.document.type)}.pdf`;
 
       const blob = new Blob([downloadResponse.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
@@ -272,7 +276,11 @@ export default function DisplayDrafts({
             )}
           </div>
 
-          <form id={`draft-form-${draft.id}`} onSubmit={handleUpdateDraft(draft)}>
+          <form
+            id={`draft-form-${draft.id}`}
+            key={`${draft.id} + ${draft.updated_at}`}
+            onSubmit={handleUpdateDraft(draft)}
+          >
             <div className="mb-3">
               <label
                 htmlFor={`draftName-${draft.id}`}
