@@ -194,6 +194,8 @@ export default function GenerateDocuments({
       setDisplayResumeDraft(draft);
     } else if (draft.document.type === "cover_letter") {
       setDisplayCoverLetterDraft(draft);
+    } else {
+      console.log("!!!SET DRAFT Function called with invalid document type:", draft.document.type);
     }
   };
 

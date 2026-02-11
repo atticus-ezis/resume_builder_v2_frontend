@@ -27,7 +27,7 @@ export default function DisplayDrafts({
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
   const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DraftHistory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingDraftId, setLoadingDraftId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const draftsWithHistory: { draft: DraftResponse; draftHistory: DraftHistory[] }[] = [];
@@ -91,16 +91,19 @@ export default function DisplayDrafts({
     const currentMarkdown = formData.get("markdown") as string;
     const markdownChanged = draft.markdown !== currentMarkdown;
     const versionNameChanged = draft.version_name !== currentName;
-    if (!markdownChanged && !versionNameChanged) return draft.id;
+    if (!markdownChanged && !versionNameChanged) {
+      console.log("!!! PATCH called but no changes detected. reuqest ignored");
+      return draft.id;
+    }
     const patchPayload: Record<string, string> = {};
     if (versionNameChanged) patchPayload.version_name = currentName;
     if (markdownChanged) patchPayload.markdown = currentMarkdown;
     try {
-      console.log(`!!!PATCH Draft Function payload: ${patchPayload} `);
+      console.log("!!!PATCH changes detected.patch payload:", patchPayload, JSON.stringify(patchPayload));
       const updateResponse = await api.patch(`api/document-version/${draft.id}/`, patchPayload);
-      console.log(`!!!PATCH Draft Function response: ${updateResponse.status}, ${updateResponse.data} `);
+      console.log("!!!PATCH Draft Function response: ", JSON.stringify(updateResponse.data, null, 2));
       const updateData = updateResponse.data as DraftResponse;
-      console.log(`!!!PATCH Draft Function return: ${updateData?.id ?? draft.id} `);
+      console.log("!!!PATCH Draft Function return: ", updateData?.id ?? draft.id);
       return updateData?.id ?? draft.id;
     } catch {
       // Toast shown by api interceptor
@@ -109,7 +112,7 @@ export default function DisplayDrafts({
 
   // 2 set on History Select — load selected version
   async function onHistorySelect(currentDraft: DraftResponse, selectedVersionId: string) {
-    setLoading(true);
+    setLoadingDraftId(currentDraft.id);
     setError(null);
     try {
       const versionId = selectedVersionId || null;
@@ -121,7 +124,7 @@ export default function DisplayDrafts({
     } catch {
       // Toast shown by api interceptor
     } finally {
-      setLoading(false);
+      setLoadingDraftId(null);
     }
   }
 
@@ -130,7 +133,7 @@ export default function DisplayDrafts({
     const documentId = draft.document.id;
     const documentType = draft.document.type;
     const response = await api.get(`api/document-version-history/?document=${documentId}`);
-    console.log(`!!!SET DRAFT HISTORY Function response: ${response.status}, ${response.data} `);
+    console.log("!!!SET DRAFT HISTORY Function response: ", response.status, JSON.stringify(response.data, null, 2));
     const draft_histories = response.data as DraftHistory[];
     if (documentType === "resume") {
       setResumeDraftHistory(draft_histories);
@@ -149,7 +152,7 @@ export default function DisplayDrafts({
         setError("No instructions provided");
         return;
       }
-      setLoading(true);
+      setLoadingDraftId(draft.id);
       setError(null);
       try {
         const newDraftId = await patchDraftIfFormChanged(draft, e.currentTarget);
@@ -157,21 +160,23 @@ export default function DisplayDrafts({
           document_version_id: newDraftId,
           instructions: instructions,
         };
-        console.log(`!!!UPDATE DRAFT Function payload: ${payload} `);
         const response = await api.post("api/update-content/", payload);
-        console.log(`!!!UPDATE DRAFT Function response: ${response.status}, ${response.data} `);
+        console.log("!!!UPDATE DRAFT Function response:", response.status, response.data);
+        console.log("!!!UPDATE DRAFT Function JSON response:", JSON.stringify(response.data, null, 2)); // this is correct but not being displayed.
         const updatedDraft = response.data as DraftResponse;
         setDisplayDrafts(updatedDraft);
+        console.log("Current CL draft display:", displayCoverLetterDraft);
+        console.log("Current CL histroy:", coverLetterDraftHistory);
       } catch {
         // Toast shown by api interceptor
       } finally {
-        setLoading(false);
+        setLoadingDraftId(null);
       }
     };
   }
 
   const handleDownload = async (draft: DraftResponse, form: HTMLFormElement | null) => {
-    setLoading(true);
+    setLoadingDraftId(draft.id);
     try {
       const draftIdForPdf = await patchDraftIfFormChanged(draft, form);
 
@@ -198,17 +203,12 @@ export default function DisplayDrafts({
     } catch {
       // Toast shown by api interceptor
     } finally {
-      setLoading(false);
+      setLoadingDraftId(null);
     }
   };
 
   return (
-    <div className="relative space-y-8">
-      {loading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gray-100/80 dark:bg-gray-900/80">
-          <Spinner size="xl" />
-        </div>
-      )}
+    <div className="space-y-8">
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
@@ -217,25 +217,29 @@ export default function DisplayDrafts({
       {draftsWithHistory.map(({ draft, draftHistory }, index) => (
         <div
           key={draft.id}
-          className={`relative ${index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""} ${loading ? "pointer-events-none opacity-70" : ""}`}
+          className={`relative ${index > 0 ? "border-t border-gray-200 pt-8 dark:border-gray-700" : ""} ${loadingDraftId === draft.id ? "pointer-events-none opacity-70" : ""}`}
         >
+          {loadingDraftId === draft.id && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gray-100/80 dark:bg-gray-900/80">
+              <Spinner size="xl" />
+            </div>
+          )}
           {generateMessages?.[draft.id] && (
             <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 {generateMessages[draft.id]}
-                {onRegenerate &&
-                  generateMessages[draft.id]?.toLowerCase().includes("found an existing document") && (
-                    <>
-                      {" "}
-                      <button
-                        type="button"
-                        className="font-medium underline underline-offset-2"
-                        onClick={() => onRegenerate?.(draft.document.type)}
-                      >
-                        Regenerate
-                      </button>
-                    </>
-                  )}
+                {onRegenerate && generateMessages[draft.id]?.toLowerCase().includes("found an existing document") && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="font-medium underline underline-offset-2"
+                      onClick={() => onRegenerate?.(draft.document.type)}
+                    >
+                      Regenerate
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           )}
