@@ -19,7 +19,7 @@ export default function DisplayDrafts({
 }: {
   displayResumeDraft: DraftResponse | null;
   displayCoverLetterDraft: DraftResponse | null;
-  setDisplayDrafts: (draft: DraftResponse) => void;
+  setDisplayDrafts?: (draft: DraftResponse) => void;
   generateMessages?: Partial<Record<number, string>>;
 }) {
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
@@ -102,7 +102,7 @@ export default function DisplayDrafts({
       console.log("!!!PATCH Draft Function response: ", JSON.stringify(updateResponse.data, null, 2));
       const updateData = updateResponse.data as DraftResponse;
       console.log("!!!PATCH Draft Function return: ", updateData?.id ?? draft.id);
-      setDisplayDrafts(updateData); // try this?
+      setDisplayDrafts?.(updateData); // try this?
       return updateData?.id ?? draft.id;
     } catch {
       // Toast shown by api interceptor
@@ -118,7 +118,7 @@ export default function DisplayDrafts({
       if (versionId) {
         const response = await api.get(`api/document-version/${versionId}/`);
         const draft = response.data as DraftResponse;
-        setDisplayDrafts(draft);
+        setDisplayDrafts?.(draft);
       }
     } catch {
       // Toast shown by api interceptor
@@ -163,7 +163,7 @@ export default function DisplayDrafts({
         console.log("!!!UPDATE DRAFT Function response:", response.status, response.data);
         console.log("!!!UPDATE DRAFT Function JSON response:", JSON.stringify(response.data, null, 2)); // this is correct but not being displayed.
         const updatedDraft = response.data as DraftResponse;
-        setDisplayDrafts(updatedDraft);
+        setDisplayDrafts?.(updatedDraft);
         console.log("Current CL draft display:", displayCoverLetterDraft);
         console.log("Current CL histroy:", coverLetterDraftHistory);
       } catch {
