@@ -184,9 +184,14 @@ export default function GenerateDocuments({
     await runGenerate({ command });
   }
 
-  function handleRegenerate(documentType: DocumentType) {
-    const command = documentType === "resume" ? "generate_resume" : "generate_cover_letter";
-    runGenerate({ command, regenerateVersion: true });
+  function handleRegenerate(documentType?: DocumentType) {
+    const command =
+      documentType !== undefined
+        ? documentType === "resume"
+          ? "generate_resume"
+          : "generate_cover_letter"
+        : lastGenerateRequest?.command;
+    if (command) runGenerate({ command, regenerateVersion: true });
   }
 
   const setDisplayDrafts = (draft: DraftResponse) => {
@@ -203,7 +208,17 @@ export default function GenerateDocuments({
     <div className="space-y-6">
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <p className="text-sm text-red-800 dark:text-red-200">
+            {error}
+            {error === "Document was already generated" && lastGenerateRequest && (
+              <>
+                {" "}
+                <button type="button" className="font-medium underline ml-1" onClick={() => handleRegenerate()}>
+                  Regenerate fresh?
+                </button>
+              </>
+            )}
+          </p>
         </div>
       )}
       <div>
@@ -228,7 +243,6 @@ export default function GenerateDocuments({
             displayCoverLetterDraft={displayCoverLetterDraft}
             setDisplayDrafts={setDisplayDrafts}
             generateMessages={generateMessages}
-            onRegenerate={handleRegenerate}
           />
         </div>
       )}

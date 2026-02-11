@@ -16,13 +16,11 @@ export default function DisplayDrafts({
   displayCoverLetterDraft,
   setDisplayDrafts,
   generateMessages,
-  onRegenerate,
 }: {
   displayResumeDraft: DraftResponse | null;
   displayCoverLetterDraft: DraftResponse | null;
   setDisplayDrafts: (draft: DraftResponse) => void;
   generateMessages?: Partial<Record<number, string>>;
-  onRegenerate?: (docType: DocumentType) => void;
 }) {
   const [showInstructions, setShowInstructions] = useState<Record<number, boolean>>({});
   const [resumeDraftHistory, setResumeDraftHistory] = useState<DraftHistory[]>([]);
@@ -230,21 +228,7 @@ export default function DisplayDrafts({
           )}
           {generateMessages?.[draft.id] && (
             <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                {generateMessages[draft.id]}
-                {onRegenerate && generateMessages[draft.id]?.toLowerCase().includes("found an existing document") && (
-                  <>
-                    {" "}
-                    <button
-                      type="button"
-                      className="font-medium underline underline-offset-2"
-                      onClick={() => onRegenerate?.(draft.document.type)}
-                    >
-                      Regenerate
-                    </button>
-                  </>
-                )}
-              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">{generateMessages[draft.id]}</p>
             </div>
           )}
           <div className="mb-3 flex flex-wrap items-center gap-3">
