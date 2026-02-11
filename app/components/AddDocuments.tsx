@@ -210,7 +210,7 @@ export default function GenerateDocuments({
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-800 dark:text-red-200">
             {error}
-            {error === "Document was already generated" && lastGenerateRequest && (
+            {error && lastGenerateRequest && (
               <>
                 {" "}
                 <button type="button" className="font-medium underline ml-1" onClick={() => handleRegenerate()}>

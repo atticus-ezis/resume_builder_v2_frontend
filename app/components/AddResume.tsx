@@ -6,7 +6,7 @@ import { api } from "@/app/api";
 import { formatDate } from "@/app/lib/formatDate";
 import PaginationModal from "@/app/components/PaginationModal";
 import ResumeUploadForm from "@/app/components/ResumeUploadForm";
-import type { Resume } from "@/app/account/home/page";
+import type { Resume } from "@/app/account/generate/page";
 
 type PaginatedExistingResumes = {
   count: number;

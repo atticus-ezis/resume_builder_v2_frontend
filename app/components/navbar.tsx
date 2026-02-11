@@ -33,7 +33,7 @@ export default function Navbar() {
 
   return (
     <FlowbiteNavbar fluid rounded className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <NavbarBrand as={Link} href="/account/home">
+      <NavbarBrand as={Link} href="/account/generate">
         <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white">Resume Builder</span>
       </NavbarBrand>
       <div className="flex md:order-2 gap-2 items-center">
