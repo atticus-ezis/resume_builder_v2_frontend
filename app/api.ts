@@ -1,5 +1,6 @@
 import axios from "axios";
 import toast from "react-hot-toast";
+import React from "react";
 
 const refresh_endpoint = process.env.NEXT_PUBLIC_API_BASE_URL + "api/accounts/token/refresh/";
 
@@ -80,12 +81,13 @@ api.interceptors.response.use(
     }
 
     const isRefreshEndpoint = originalRequest?.url?.includes("/token/refresh/");
+    const isValidateUserEndpoint = originalRequest?.url?.includes("/validate-user/");
 
-    // Handle 401 with token refresh
+    // Handle 401 with token refresh (skip only the refresh endpoint itself)
     if (status === 401 && !(originalRequest as { _retry?: boolean })._retry && !isRefreshEndpoint) {
       (originalRequest as { _retry?: boolean })._retry = true;
       try {
-        await fetch(refresh_endpoint, {
+        const refreshResponse = await fetch(refresh_endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -93,12 +95,62 @@ api.interceptors.response.use(
           },
           credentials: "include",
         });
-        if (originalRequest) return api(originalRequest);
-        return Promise.reject(error);
+        
+        // Check if refresh was successful
+        if (!refreshResponse.ok) {
+          throw new Error(`Refresh failed with status ${refreshResponse.status}`);
+        }
+        
+        // Token refresh succeeded - retry the original request
+        return api(originalRequest!);
       } catch {
-        if (typeof document !== "undefined") document.location.href = "/account/login";
+        // Token refresh failed - show toast with login/register links (skip for auth check endpoints)
+        if (typeof window !== "undefined" && !isValidateUserEndpoint) {
+          toast.error(
+            (t) =>
+              React.createElement(
+                "div",
+                { className: "flex flex-col gap-2" },
+                React.createElement("p", { className: "font-medium" }, "You must be logged in to continue"),
+                React.createElement(
+                  "div",
+                  { className: "flex gap-2" },
+                  React.createElement(
+                    "a",
+                    {
+                      href: "/account/login",
+                      className:
+                        "text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline",
+                      onClick: () => toast.dismiss(t.id),
+                    },
+                    "Login",
+                  ),
+                  React.createElement("span", { className: "text-sm text-gray-500" }, "or"),
+                  React.createElement(
+                    "a",
+                    {
+                      href: "/account/register",
+                      className:
+                        "text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline",
+                      onClick: () => toast.dismiss(t.id),
+                    },
+                    "Register",
+                  ),
+                ),
+              ),
+            { duration: 6000 },
+          );
+        }
         return Promise.reject(error);
       }
+    }
+
+    // Handle 401/403 after retry - permissions issue (skip for auth check endpoints)
+    if ((status === 401 || status === 403) && (originalRequest as { _retry?: boolean })._retry) {
+      if (typeof window !== "undefined" && !isValidateUserEndpoint) {
+        toast.error("You don't have permission to access this resource");
+      }
+      return Promise.reject(error);
     }
 
     // Show toast for all errors except 401/403

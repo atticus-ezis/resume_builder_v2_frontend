@@ -37,16 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Run on initial mount
+  // Run on initial mount and re-validate on route changes
   useEffect(() => {
     fetchUser();
-  }, []);
-
-  // Re-validate on route changes
-  useEffect(() => {
-    if (pathname) {
-      fetchUser();
-    }
   }, [pathname]);
 
   return (
