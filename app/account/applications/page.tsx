@@ -47,11 +47,11 @@ export default function ResumesPage() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [ordering, setOrdering] = useState("-created_at");
-  
+
   // Detail view state
   const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<DraftResponse | null>(null);
-  
+
   // View state: 'list' | 'detail' | 'version'
   const [view, setView] = useState<"list" | "detail" | "version">("list");
 
@@ -126,7 +126,7 @@ export default function ResumesPage() {
   const renderListView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Resumes</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Applications</h1>
       </div>
 
       {/* Search and ordering controls */}

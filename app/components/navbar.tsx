@@ -69,8 +69,8 @@ export default function Navbar() {
               <DropdownItem as={Link} href="/account/profile">
                 Profile
               </DropdownItem>
-              <DropdownItem as={Link} href="/account/resumes">
-                Past Applications
+              <DropdownItem as={Link} href="/account/applications">
+                Applications
               </DropdownItem>
               <DropdownDivider />
               <DropdownItem onClick={logoutHandler}>Sign out</DropdownItem>
