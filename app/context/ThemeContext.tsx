@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 type ThemeContextType = {
   theme: "light" | "dark";
-  toggleTheme: () => void;
+  toggleTheme: (newTheme?: "light" | "dark") => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -42,11 +42,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
+  const toggleTheme = (newTheme?: "light" | "dark") => {
+    const next = newTheme ?? (theme === "light" ? "dark" : "light");
+    setTheme(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem("theme", newTheme);
+      localStorage.setItem("theme", next);
+      applyTheme(next);
     }
   };
 

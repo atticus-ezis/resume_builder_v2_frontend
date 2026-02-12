@@ -36,7 +36,7 @@ export default function Navbar() {
   return (
     <FlowbiteNavbar fluid rounded className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <NavbarBrand as={Link} href="/account/generate">
-        <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white">Resume Builder</span>
+        <span className="self-center whitespace-nowrap text-xl font-semibold text-gray-900 dark:text-white">Resume Builder</span>
       </NavbarBrand>
       <div className="flex md:order-2 gap-2 items-center">
         {/* Dark Mode Toggle */}
@@ -53,7 +53,12 @@ export default function Navbar() {
               clipRule="evenodd"
             />
           </svg>
-          <ToggleSwitch checked={theme === "dark"} onChange={toggleTheme} label="" aria-label="Toggle dark mode" />
+          <ToggleSwitch
+            checked={theme === "dark"}
+            onChange={(checked) => toggleTheme(checked ? "dark" : "light")}
+            label=""
+            aria-label="Toggle dark mode"
+          />
           <svg
             className="w-5 h-5 text-gray-500 dark:text-gray-400"
             fill="currentColor"
