@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      const response = await api.get(validate_user_endpoint);
+      const response = await api.get(validate_user_endpoint, { skipErrorToast: true } as any);
       setIsVerified(true);
       // Safely access response data
       if (response.data) {

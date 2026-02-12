@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/app/api";
 import CreateJobFormModal from "@/app/components/CreateJobFormModal";
 import PaginationModal from "@/app/components/PaginationModal";
+import { toast } from "react-hot-toast";
 
 // sets JobID useState for homepage with onJobSelect
 
@@ -42,12 +43,12 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
 
   async function checkExistingJobs() {
     try {
-      const response = await api.get("/api/job/");
+      const response = await api.get("/api/job/", { skipErrorToast: true } as any);
       if (response.status === 200 && response.data.count > 0) {
         setHasExistingJobs(true);
       }
     } catch {
-      // Toast shown by api interceptor
+      // Silently fail - checking for existing jobs, no need to show error
     }
   }
 

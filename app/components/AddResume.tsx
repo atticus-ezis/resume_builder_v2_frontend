@@ -7,6 +7,7 @@ import { formatDate } from "@/app/lib/formatDate";
 import PaginationModal from "@/app/components/PaginationModal";
 import ResumeUploadForm from "@/app/components/ResumeUploadForm";
 import type { Resume } from "@/app/account/generate/page";
+import { toast } from "react-hot-toast";
 
 type PaginatedExistingResumes = {
   count: number;
@@ -32,12 +33,13 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
 
   async function checkExistingResumes() {
     try {
-      const response = await api.get("/api/applicant/");
+      const response = await api.get("/api/applicant/", { skipErrorToast: true } as any);
       if (response.status === 200 && response.data.count > 0) {
         setHasExistingResumes(true);
         setPaginatedExistingResumes(response.data);
       }
     } catch {
+      toast.dismiss();
       // Toast shown by api interceptor
     }
   }

@@ -62,7 +62,7 @@ api.interceptors.response.use(
   },
   async function onRejected(error: unknown) {
     const axiosError = error as {
-      config?: { url?: string; method?: string };
+      config?: { url?: string; method?: string; skipErrorToast?: boolean };
       response?: { status: number; data: unknown };
       message?: string;
     };
@@ -81,7 +81,6 @@ api.interceptors.response.use(
     }
 
     const isRefreshEndpoint = originalRequest?.url?.includes("/token/refresh/");
-    const isValidateUserEndpoint = originalRequest?.url?.includes("/validate-user/");
 
     // Handle 401 with token refresh (skip only the refresh endpoint itself)
     if (status === 401 && !(originalRequest as { _retry?: boolean })._retry && !isRefreshEndpoint) {
@@ -105,7 +104,7 @@ api.interceptors.response.use(
         return api(originalRequest!);
       } catch {
         // Token refresh failed - show toast with login/register links (skip for auth check endpoints)
-        if (typeof window !== "undefined" && !isValidateUserEndpoint) {
+        if (typeof window !== "undefined" && !(originalRequest as { skipErrorToast?: boolean }).skipErrorToast) {
           toast.error(
             (t) =>
               React.createElement(
@@ -147,14 +146,14 @@ api.interceptors.response.use(
 
     // Handle 401/403 after retry - permissions issue (skip for auth check endpoints)
     if ((status === 401 || status === 403) && (originalRequest as { _retry?: boolean })._retry) {
-      if (typeof window !== "undefined" && !isValidateUserEndpoint) {
+      if (typeof window !== "undefined" && !originalRequest?.skipErrorToast) {
         toast.error("You don't have permission to access this resource");
       }
       return Promise.reject(error);
     }
 
-    // Show toast for all errors except 401/403
-    if (typeof window !== "undefined" && status !== 401 && status !== 403) {
+    // Show toast for all errors except 401/403 (unless skipErrorToast is set)
+    if (typeof window !== "undefined" && status !== 401 && status !== 403 && !originalRequest?.skipErrorToast) {
       if (status === 500) {
         const detail = extractDetailFromResponse(data);
         toast.error(detail || "Server error");
