@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { api } from "@/app/api";
+import { api, getCookie } from "@/app/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -27,6 +27,7 @@ export default function Navbar() {
   const { userEmail } = useAuth();
 
   async function logoutHandler() {
+    // Don't need to manually send refresh_token - it's sent automatically as HttpOnly cookie
     await api.post("/api/accounts/logout/");
     router.push("/");
   }
@@ -67,6 +68,9 @@ export default function Navbar() {
             <Dropdown arrowIcon={false} inline label={<Avatar alt="User settings" img="" rounded></Avatar>}>
               <DropdownItem as={Link} href="/account/profile">
                 Profile
+              </DropdownItem>
+              <DropdownItem as={Link} href="/account/resumes">
+                Past Applications
               </DropdownItem>
               <DropdownDivider />
               <DropdownItem onClick={logoutHandler}>Sign out</DropdownItem>

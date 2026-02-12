@@ -19,7 +19,7 @@ function extractDetailFromResponse(data: unknown): string | undefined {
 }
 
 // Helper function to get cookie value by name
-function getCookie(name: string): string | null {
+export function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null; // SSR safety
 
   const value = `; ${document.cookie}`;

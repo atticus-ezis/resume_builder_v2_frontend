@@ -11,6 +11,7 @@ export default function Profile() {
     const response = await api.get(`/api/accounts/user?id=${userId}`);
     console.log("RESPONSE DATA:", response.data);
   }
+
   useEffect(() => {
     getProfile();
   }, []);
