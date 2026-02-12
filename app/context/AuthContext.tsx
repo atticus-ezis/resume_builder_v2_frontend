@@ -10,6 +10,7 @@ type AuthContextType = {
   userEmail: string | null;
   userId: string | null;
   authorizeUser: () => Promise<void>;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,13 +38,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const logout = () => {
+    setIsVerified(false);
+    setUserEmail(null);
+    setUserId(null);
+  };
+
   // Run on initial mount and re-validate on route changes
   useEffect(() => {
     fetchUser();
   }, [pathname]);
 
   return (
-    <AuthContext.Provider value={{ isVerified, userEmail, userId, authorizeUser: fetchUser }}>
+    <AuthContext.Provider value={{ isVerified, userEmail, userId, authorizeUser: fetchUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

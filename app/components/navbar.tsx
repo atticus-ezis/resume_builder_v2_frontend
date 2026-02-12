@@ -22,13 +22,14 @@ import {
 
 export default function Navbar() {
   const router = useRouter();
-  const { isVerified } = useAuth();
+  const { isVerified, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { userEmail } = useAuth();
 
   async function logoutHandler() {
     // Don't need to manually send refresh_token - it's sent automatically as HttpOnly cookie
     await api.post("/api/accounts/logout/");
+    logout();
     router.push("/");
   }
 
