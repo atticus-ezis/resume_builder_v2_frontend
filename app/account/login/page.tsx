@@ -21,6 +21,7 @@ export default function Login() {
     password: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [showResendLink, setShowResendLink] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -47,11 +48,21 @@ export default function Login() {
 
       if (!response.ok) {
         if (response.status === 400) {
-          setError(responseJson.non_field_errors?.[0] || "Invalid credentials. Please try again.");
+          const errorMessage = responseJson.non_field_errors?.[0] || "Invalid credentials. Please try again.";
+          setError(errorMessage);
+          
+          // Check if email is not verified
+          if (errorMessage === "E-mail is not verified.") {
+            setShowResendLink(true);
+          } else {
+            setShowResendLink(false);
+          }
         } else if (response.status === 500) {
           setError("Internal server error. Please try again later.");
+          setShowResendLink(false);
         } else {
           setError(responseJson.detail || "An unexpected error occurred. Please try again later.");
+          setShowResendLink(false);
         }
         return;
       }
@@ -83,8 +94,22 @@ export default function Login() {
           </div>
 
           {error && (
-            <Alert color="failure" onDismiss={() => setError(null)}>
-              <span className="font-medium">Error!</span> {error}
+            <Alert color="failure" onDismiss={() => { setError(null); setShowResendLink(false); }}>
+              <div className="flex flex-col gap-2">
+                <div>
+                  <span className="font-medium">Error!</span> {error}
+                </div>
+                {showResendLink && (
+                  <div>
+                    <Link
+                      href={`/account/login/resend-email?email=${encodeURIComponent(loginForm.email)}`}
+                      className="text-sm font-medium text-red-700 hover:underline dark:text-red-400"
+                    >
+                      Click here to resend verification email
+                    </Link>
+                  </div>
+                )}
+              </div>
             </Alert>
           )}
 
