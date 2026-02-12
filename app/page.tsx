@@ -16,8 +16,7 @@ export default function Home() {
             <span className="block text-blue-600 dark:text-blue-400">In Minutes, Not Hours</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-            Land your dream job with AI-powered, role-specific resumes and cover letters that stand out from the
-            competition.
+            Land your dream job with AI-powered, role-specific resumes and cover letters that stand out.
           </p>
           <div className="mt-10 flex justify-center gap-4">
             {isVerified ? (
@@ -121,14 +120,8 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-white sm:text-4xl">Ready to land your dream job?</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">Beat the AI screening, save time, work smarter.</p>
           <div className="mt-8">
-            <Button
-              as={Link}
-              href={isVerified ? "/account/generate" : "/account/register"}
-              size="xl"
-              color="light"
-              className="px-8 py-3"
-            >
-              {isVerified ? "Try It Now" : "Get Started"}
+            <Button as={Link} href="/account/generate" size="xl" color="light" className="px-8 py-3">
+              Get Started
             </Button>
           </div>
         </div>
