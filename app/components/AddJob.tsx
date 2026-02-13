@@ -12,7 +12,7 @@ import { toast } from "react-hot-toast";
 // check for existing jobs and store + display results
 // the modal that displays these results will be re-usable, start with Flow-bites
 
-type Job = {
+export type Job = {
   id: number;
   job_position: string;
   company_name: string;
@@ -27,12 +27,16 @@ type PaginatedExistingJobs = {
 
 type JobSelectorProps = {
   onJobSelect?: (job: Job | null) => void;
+  value?: Job | null;
 };
 
-export default function JobSelector({ onJobSelect }: JobSelectorProps) {
+export default function JobSelector({ onJobSelect, value }: JobSelectorProps) {
   const [showExistingJobsModal, setShowExistingJobsModal] = useState(false);
   const [showNewJobModal, setShowNewJobModal] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [internalSelectedJob, setInternalSelectedJob] = useState<Job | null>(null);
+  
+  // Use controlled value if provided, otherwise use internal state
+  const selectedJob = value !== undefined ? value : internalSelectedJob;
   const [hasExistingJobs, setHasExistingJobs] = useState(false);
   const [paginatedExistingJobs, setPaginatedExistingJobs] = useState<PaginatedExistingJobs>({
     count: 0,
@@ -79,7 +83,11 @@ export default function JobSelector({ onJobSelect }: JobSelectorProps) {
   }, [showExistingJobsModal]);
 
   const setJob = (job: Job | null) => {
-    setSelectedJob(job);
+    // Update internal state only if not controlled
+    if (value === undefined) {
+      setInternalSelectedJob(job);
+    }
+    // Always notify parent
     onJobSelect?.(job);
   };
 

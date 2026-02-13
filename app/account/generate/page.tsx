@@ -19,14 +19,14 @@ export type Resume = {
 };
 
 export default function Home() {
-  const [selectedJobId, setSelectedJobId] = useState<number>(0);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedResumeId, setSelectedResumeId] = useState<number>(0);
   const [missingStep, setMissingStep] = useState<"job" | "resume" | null>(null);
   const jobSectionRef = useRef<HTMLDivElement>(null);
   const resumeSectionRef = useRef<HTMLDivElement>(null);
 
   const handleJobSelect = useCallback((job: Job | null) => {
-    setSelectedJobId(job?.id || 0);
+    setSelectedJob(job);
     setMissingStep(null);
   }, []);
 
@@ -71,7 +71,7 @@ export default function Home() {
                 </p>
               </div>
             )}
-            <AddJob onJobSelect={handleJobSelect} />
+            <AddJob onJobSelect={handleJobSelect} value={selectedJob} />
           </div>
         </Card>
 
@@ -100,8 +100,9 @@ export default function Home() {
             </div>
             <GenerateDocuments
               user_context_id={selectedResumeId}
-              job_description_id={selectedJobId}
+              job_description_id={selectedJob?.id || 0}
               onMissingSelection={handleMissingSelection}
+              onJobSelect={handleJobSelect}
             />
           </div>
         </Card>
