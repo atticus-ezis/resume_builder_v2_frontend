@@ -23,7 +23,7 @@ type AddResumeProps = {
 export default function AddResume({ onResumeSelect }: AddResumeProps) {
   const [showExistingResumesModal, setShowExistingResumesModal] = useState(false);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [hasExistingResumes, setHasExistingResumes] = useState(true);
+  const [hasExistingResumes, setHasExistingResumes] = useState(false);
   const [paginatedExistingResumes, setPaginatedExistingResumes] = useState<PaginatedExistingResumes>({
     count: 0,
     results: [],
