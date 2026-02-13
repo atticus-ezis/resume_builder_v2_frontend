@@ -1,9 +1,3 @@
-// function onUpdateDraft(e, draft) -> returns new displayResumeDraft or displayCoverLetterDraft
-// 1) return 'none' if version_name and markdown are the same as the previous version
-// 2) else create kwargs with version_name and markdown
-// 3) send api.post("api/update-content/", payload);
-// 4) set new displayResumeDraft or displayCoverLetterDraft
-
 import { DraftResponse, DraftHistory, DocumentType } from "./AddDocuments";
 import { useState, useEffect } from "react";
 import { api } from "@/app/api";
@@ -41,42 +35,6 @@ export default function DisplayDrafts({
     if (displayResumeDraft) setDraftHistory(displayResumeDraft);
     if (displayCoverLetterDraft) setDraftHistory(displayCoverLetterDraft);
   }, [displayResumeDraft?.id, displayCoverLetterDraft?.id]);
-
-  // function testingDrafts(boolean: boolean) {
-  //   if (boolean) {
-  //     setDisplayDrafts({
-  //       id: 3,
-  //       markdown: "test",
-  //       version_name: "test version",
-  //       document: { id: 1, type: "resume" },
-  //       updated_at: "2026-02-09T12:00:00Z",
-  //     });
-  //     setDisplayDrafts({
-  //       id: 4,
-  //       markdown: "this is a cover letter",
-  //       version_name: "test jkflahskjfglkas",
-  //       document: { id: 1, type: "cover_letter" },
-  //       updated_at: "2026-02-09T12:08:23Z",
-  //     });
-  //   }
-  // }
-
-  // function testingHistory(boolean: boolean) {
-  //   if (boolean) {
-  //     setDraftHistory({
-  //       id: 2,
-  //       version_name: "test version",
-  //       markdown: "test",
-  //       document: { id: 1, type: "resume" },
-  //       updated_at: "2026-02-09T12:00:00Z",
-  //     });
-  //   }
-  // }
-
-  // useEffect(() => {
-  //   testingDrafts(true);
-  //   testingHistory(true);
-  // }, []);
 
   // patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
   async function patchDraftIfFormChanged(
@@ -291,7 +249,7 @@ export default function DisplayDrafts({
               <Textarea
                 id={`markdown-${draft.id}`}
                 name="markdown"
-                rows={10}
+                rows={25}
                 defaultValue={draft.markdown}
                 className="w-full"
               />

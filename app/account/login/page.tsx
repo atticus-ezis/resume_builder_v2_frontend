@@ -50,7 +50,7 @@ export default function Login() {
         if (response.status === 400) {
           const errorMessage = responseJson.non_field_errors?.[0] || "Invalid credentials. Please try again.";
           setError(errorMessage);
-          
+
           // Check if email is not verified
           if (errorMessage === "E-mail is not verified.") {
             setShowResendLink(true);
@@ -69,7 +69,7 @@ export default function Login() {
 
       // Handle successful login
       if (responseJson.user?.pk) {
-        router.push(`/account/profile/`);
+        router.push(`/account/generate/`);
       } else {
         setError("Login successful but user data is missing.");
         console.log("responseJson:", responseJson);
@@ -94,7 +94,13 @@ export default function Login() {
           </div>
 
           {error && (
-            <Alert color="failure" onDismiss={() => { setError(null); setShowResendLink(false); }}>
+            <Alert
+              color="failure"
+              onDismiss={() => {
+                setError(null);
+                setShowResendLink(false);
+              }}
+            >
               <div className="flex flex-col gap-2">
                 <div>
                   <span className="font-medium">Error!</span> {error}
