@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## About this App
+
+This is an app that lets you build custom cover-letters and resumes in less than a minute. Why? I found myself copy and pasting job descriptions and personal experience into chatGPT and creating new pdf files in Google docs for every application. If you apply to 10 + roles a day that can be very fatiguing, so I built this app to streamline the process and save time. AI is being used to screen resumes and cover-letters (ATS) so you migth as well use AI tools to your advantage.
 
 ## Getting Started
 
@@ -34,3 +36,5 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

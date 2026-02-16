@@ -107,8 +107,9 @@ export default function Home() {
             </div>
             <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">ATS-Optimized</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Role-specific, ATS-friendly formatting ensures your resume passes automated screening and reaches human
-              recruiters.
+              Recruiters use AI to screen applications—so why aren't you using AI to get past their filters? Beat the bots at
+              their own game. Our AI-powered system analyzes job descriptions and crafts ATS-optimized resumes that actually
+              get read by humans.
             </p>
           </div>
         </div>
