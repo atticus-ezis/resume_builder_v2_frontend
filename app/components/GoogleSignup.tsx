@@ -1,9 +1,12 @@
+// this is the uri frontend sends
+// http://localhost:3000/account/login/google-callback
+//
+
+"use client";
 function GoogleLoginButton() {
   const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-  const REDIRECT_URI = typeof window !== "undefined" 
-    ? `${window.location.origin}/account/login/google-callback`
-    : "";
-    
+  const REDIRECT_URI = typeof window !== "undefined" ? `${window.location.origin}/account/login/google-callback` : "";
+
   const handleLogin = () => {
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
@@ -44,7 +47,6 @@ function GoogleLoginButton() {
   );
 }
 
-"use client";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, Spinner, Alert } from "flowbite-react";
@@ -57,7 +59,7 @@ function GoogleCallbackHandler() {
 
   useEffect(() => {
     const code = searchParams.get("code");
-    
+
     if (!code) {
       setError("No authorization code received from Google.");
       return;
@@ -73,9 +75,13 @@ function GoogleCallbackHandler() {
         });
 
         const data = await response.json();
-        
+
         if (!response.ok) {
-          setError(data.detail || "Failed to authenticate with Google.");
+          if (data.non_field_errors) {
+            const nonFieldErrors = data.non_field_errors[0];
+            setError(nonFieldErrors);
+          }
+          setError(data[0][0] || "Failed to authenticate with Google.");
           return;
         }
 
