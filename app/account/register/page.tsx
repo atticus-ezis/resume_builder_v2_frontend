@@ -14,6 +14,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "flowbite-react";
+import { GoogleLoginButton } from "@/app/components/GoogleSignup";
 
 type FormData = {
   email: string;
@@ -195,6 +196,17 @@ export default function Registration() {
               )}
             </Button>
           </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Or continue with</span>
+            </div>
+          </div>
+
+          <GoogleLoginButton />
         </div>
       </Card>
 
