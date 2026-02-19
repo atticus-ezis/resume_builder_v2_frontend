@@ -1,10 +1,11 @@
 import { api } from "@/app/api";
-import { Button, Modal, ModalHeader, ModalBody, ModalFooter } from "flowbite-react";
-import { useState, useEffect } from "react";
+import { Button, Modal, ModalHeader, ModalBody, ModalFooter, Spinner } from "flowbite-react";
+import { useState, useEffect, useRef } from "react";
 import { Select } from "flowbite-react";
 import DisplayDrafts from "./DisplayDrafts";
 import type { Job } from "./AddJob";
 import { formatDate } from "@/app/lib/formatDate";
+import { pollTaskResult } from "@/app/utils/pollTaskResult";
 
 export type DocumentType = "resume" | "cover_letter";
 
@@ -57,6 +58,29 @@ export default function GenerateDocuments({
   const [generateMessages, setGenerateMessages] = useState<Partial<Record<number, string>>>({});
   const [draftHistory, setDraftHistory] = useState<DraftHistory[] | []>([]);
   const [showExistingDocsModal, setShowExistingDocsModal] = useState(false);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPolling() {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }
+
+  function processGenerateResult(result: GenerateDocumentsResponseItem[], baseRequest: generateRequest) {
+    for (const item of result) {
+      const documentVersion = item.document_version;
+      if (item.message) {
+        setGenerateMessages((prev) => ({ ...prev, [documentVersion.id]: item.message! }));
+      }
+      if (documentVersion.document.type === "resume") {
+        setDisplayResumeDraft(documentVersion);
+      } else if (documentVersion.document.type === "cover_letter") {
+        setDisplayCoverLetterDraft(documentVersion);
+      }
+    }
+    setLastGenerateRequest(baseRequest);
+  }
 
   // sets displayResume + coverLetter and lastGenerateRequest
   async function runGenerate({ command, regenerateVersion = false }: { command: string; regenerateVersion?: boolean }) {
@@ -86,23 +110,28 @@ export default function GenerateDocuments({
 
     try {
       const response = await api.post(`api/generate-resume-and-cover-letter/`, payload);
-      const draft_responses = response.data as GenerateDocumentsResponseItem[];
-      for (const item of draft_responses) {
-        const documentVersion = item.document_version;
-        if (item.message) {
-          setGenerateMessages((prev) => ({ ...prev, [documentVersion.id]: item.message! }));
-        }
-        if (documentVersion.document.type === "resume") {
-          setDisplayResumeDraft(documentVersion);
-        } else if (documentVersion.document.type === "cover_letter") {
-          setDisplayCoverLetterDraft(documentVersion);
-        }
-      }
-      setLastGenerateRequest(baseRequest);
+      const { task_id } = response.data as { task_id: string };
+
+      pollingIntervalRef.current = pollTaskResult<GenerateDocumentsResponseItem[]>({
+        taskId: task_id,
+        onSuccess: (result) => {
+          stopPolling();
+          processGenerateResult(result, baseRequest);
+          setLoading(false);
+        },
+        onFailure: (error) => {
+          stopPolling();
+          setError(error);
+          setLoading(false);
+        },
+        onError: () => {
+          stopPolling();
+          setLoading(false);
+        },
+      });
     } catch {
-      // Toast shown by api interceptor
-    } finally {
       setLoading(false);
+      // Toast shown by api interceptor
     }
   }
 
@@ -170,6 +199,11 @@ export default function GenerateDocuments({
   }
   useEffect(() => {
     handleHistorySelect();
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, []);
 
   async function selectDraft(draftID: number) {
@@ -214,7 +248,14 @@ export default function GenerateDocuments({
           </Select>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={loading} className="w-fit">
-              {loading ? "Generating..." : "Generate"}
+              {loading ? (
+                <>
+                  <Spinner aria-label="Generating" size="sm" className="mr-2" />
+                  Generating...
+                </>
+              ) : (
+                "Generate"
+              )}
             </Button>
             {draftHistory.length > 0 && (
               <>
