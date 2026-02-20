@@ -67,6 +67,7 @@ export default function GenerateDocuments({
     }
   }
 
+  // sets returned doc version, message and last command
   function processGenerateResult(result: GenerateDocumentsResponseItem[], baseRequest: generateRequest) {
     for (const item of result) {
       const documentVersion = item.document_version;
@@ -82,7 +83,7 @@ export default function GenerateDocuments({
     setLastGenerateRequest(baseRequest);
   }
 
-  // sets displayResume + coverLetter and lastGenerateRequest
+  // logic that calls generate command
   async function runGenerate({ command, regenerateVersion = false }: { command: string; regenerateVersion?: boolean }) {
     setLoading(true);
     setError(null);
@@ -111,6 +112,7 @@ export default function GenerateDocuments({
     try {
       const response = await api.post(`api/generate-resume-and-cover-letter/`, payload);
       const { task_id } = response.data as { task_id: string };
+      console.log("!!!!! task_id: ", task_id);
 
       pollingIntervalRef.current = pollTaskResult<GenerateDocumentsResponseItem[]>({
         taskId: task_id,

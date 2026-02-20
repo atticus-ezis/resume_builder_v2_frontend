@@ -15,9 +15,10 @@ type PollOptions<T> = {
   onError?: () => void;
 };
 
+// check status of task and set result to onSuccess or onFailure
 export function pollTaskResult<T>({
   taskId,
-  intervalMs = 2000,
+  intervalMs = 5000,
   onSuccess,
   onFailure,
   onError,
@@ -26,11 +27,17 @@ export function pollTaskResult<T>({
     try {
       const response = await api.get(`api/task-result/${taskId}/`);
       const { status, result } = response.data as TaskResultResponse<T>;
+      console.log("status: ", status);
+      console.log("result: ", result);
 
       if (status === "SUCCESS") {
+        console.log("!!!!! SUCCESS");
+        console.log("result: ", result);
         clearInterval(intervalId);
         onSuccess(result as T);
       } else if (status === "FAILURE") {
+        console.log("!!!!! FAILURE");
+        console.log("result: ", result);
         clearInterval(intervalId);
         onFailure(typeof result === "string" ? result : "An unexpected error occurred.");
       }
