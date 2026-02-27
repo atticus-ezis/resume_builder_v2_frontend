@@ -1,9 +1,10 @@
 import { DraftResponse, DraftHistory, DocumentType } from "./AddDocuments";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/app/api";
 import { docTypeToText } from "@/app/utils/DocTypeToText";
 import { DateFormatter } from "@/app/utils/DateFormatter";
 import { Button, Select, Textarea, Spinner } from "flowbite-react";
+import { pollTaskResult } from "@/app/utils/pollTaskResult";
 
 export default function DisplayDrafts({
   displayResumeDraft,
@@ -21,6 +22,7 @@ export default function DisplayDrafts({
   const [coverLetterDraftHistory, setCoverLetterDraftHistory] = useState<DraftHistory[]>([]);
   const [loadingDraftId, setLoadingDraftId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const draftsWithHistory: { draft: DraftResponse; draftHistory: DraftHistory[] }[] = [];
   if (displayResumeDraft) {
@@ -35,6 +37,14 @@ export default function DisplayDrafts({
     if (displayResumeDraft) setDraftHistory(displayResumeDraft);
     if (displayCoverLetterDraft) setDraftHistory(displayCoverLetterDraft);
   }, [displayResumeDraft?.id, displayCoverLetterDraft?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   // patch draft if form has version_name/markdown changes. Returns draft id to use (updated if patched).
   async function patchDraftIfFormChanged(
@@ -118,16 +128,28 @@ export default function DisplayDrafts({
           instructions: instructions,
         };
         const response = await api.post("api/update-content/", payload);
-        console.log("!!!UPDATE DRAFT Function response:", response.status, response.data);
-        console.log("!!!UPDATE DRAFT Function JSON response:", JSON.stringify(response.data, null, 2)); // this is correct but not being displayed.
-        const updatedDraft = response.data as DraftResponse;
-        setDisplayDrafts?.(updatedDraft);
-        console.log("Current CL draft display:", displayCoverLetterDraft);
-        console.log("Current CL histroy:", coverLetterDraftHistory);
+        const { task_id } = response.data as { task_id: string };
+
+        pollingIntervalRef.current = pollTaskResult<DraftResponse>({
+          taskId: task_id,
+          onSuccess: (updatedDraft) => {
+            pollingIntervalRef.current = null;
+            setDisplayDrafts?.(updatedDraft);
+            setLoadingDraftId(null);
+          },
+          onFailure: (error) => {
+            pollingIntervalRef.current = null;
+            setError(error);
+            setLoadingDraftId(null);
+          },
+          onError: () => {
+            pollingIntervalRef.current = null;
+            setLoadingDraftId(null);
+          },
+        });
       } catch {
-        // Toast shown by api interceptor
-      } finally {
         setLoadingDraftId(null);
+        // Toast shown by api interceptor
       }
     };
   }

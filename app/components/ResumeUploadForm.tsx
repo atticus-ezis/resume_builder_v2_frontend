@@ -7,26 +7,36 @@ import type { Resume } from "@/app/account/generate/page";
 
 type ResumeUploadFormProps = {
   setResume: (resume: Resume) => void;
+  message?: string | null;
+  setMessage?: (message: string | null) => void;
+  fieldErrors?: Record<string, string>;
+  setFieldErrors?: (errors: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
   onUploadSuccess?: () => void;
 };
 
 const PDF_ACCEPT = "application/pdf";
 
-export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeUploadFormProps) {
+export default function ResumeUploadForm({
+  setResume,
+  message,
+  setMessage,
+  fieldErrors = {},
+  setFieldErrors,
+  onUploadSuccess,
+}: ResumeUploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     setError(null);
-    setFieldErrors((prev) => ({ ...prev, file: "" }));
+    setMessage?.(null);
+    setFieldErrors?.({});
     if (selectedFile) {
       if (selectedFile.type !== PDF_ACCEPT) {
-        setFieldErrors((prev) => ({ ...prev, file: "Please select a PDF file" }));
+        setFieldErrors?.((prev) => ({ ...prev, file: "Please select a PDF file" }));
         setFile(null);
         return;
       }
@@ -38,20 +48,20 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" }));
+    if (fieldErrors.name) setFieldErrors?.((prev) => ({ ...prev, name: "" }));
   };
 
   const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setMessage(null);
-    setFieldErrors({});
+    setMessage?.(null);
+    setFieldErrors?.({});
 
     const newErrors: Record<string, string> = {};
     if (!file) newErrors.file = "Please select a PDF file";
     if (!name.trim()) newErrors.name = "Name is required";
     if (Object.keys(newErrors).length > 0) {
-      setFieldErrors(newErrors);
+      setFieldErrors?.(newErrors);
       return;
     }
 
@@ -74,7 +84,7 @@ export default function ResumeUploadForm({ setResume, onUploadSuccess }: ResumeU
       setFile(null);
       setName("");
       if (response.data.message != null && String(response.data.message).trim() !== "") {
-        setMessage(String(response.data.message));
+        setMessage?.(String(response.data.message));
       }
       if (e.target instanceof HTMLFormElement) e.target.reset();
 

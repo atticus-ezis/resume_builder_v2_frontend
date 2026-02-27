@@ -23,6 +23,8 @@ type AddResumeProps = {
 export default function AddResume({ onResumeSelect }: AddResumeProps) {
   const [showExistingResumesModal, setShowExistingResumesModal] = useState(false);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [hasExistingResumes, setHasExistingResumes] = useState(false);
   const [paginatedExistingResumes, setPaginatedExistingResumes] = useState<PaginatedExistingResumes>({
     count: 0,
@@ -65,6 +67,7 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
   const setResume = (resume: Resume | null) => {
     setSelectedResume(resume);
     onResumeSelect?.(resume);
+    setFieldErrors({});
   };
 
   const handleOnClose = () => setShowExistingResumesModal(false);
@@ -72,7 +75,14 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
   return (
     <>
       <div className="space-y-4">
-        <ResumeUploadForm setResume={setResume} onUploadSuccess={() => paginationCall(null)} />
+        <ResumeUploadForm
+          setResume={setResume}
+          message={uploadMessage}
+          setMessage={setUploadMessage}
+          fieldErrors={fieldErrors}
+          setFieldErrors={setFieldErrors}
+          onUploadSuccess={checkExistingResumes}
+        />
         <div className="flex flex-wrap items-center gap-3">
           {hasExistingResumes && (
             <>
@@ -92,7 +102,14 @@ export default function AddResume({ onResumeSelect }: AddResumeProps) {
                 (Updated {formatDate(selectedResume.updated_at)})
               </span>
             </span>
-            <Button size="xs" color="gray" onClick={() => setResume(null)}>
+            <Button
+              size="xs"
+              color="gray"
+              onClick={() => {
+                setResume(null);
+                setUploadMessage(null);
+              }}
+            >
               Clear
             </Button>
           </div>
